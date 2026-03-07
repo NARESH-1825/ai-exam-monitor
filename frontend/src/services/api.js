@@ -1,0 +1,34 @@
+// frontend/src/services/api.js
+import axios from 'axios';
+
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
+  withCredentials: true,
+});
+
+// Attach JWT token to every request
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
+// Handle auth errors globally
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const { response } = error;
+    if (response?.status === 401) {
+      const code = response.data?.code;
+      if (code === 'SESSION_INVALIDATED') {
+        // Handled by Firestore listener in useAuthSync — just clear storage
+      }
+      localStorage.removeItem('token');
+      localStorage.removeItem('authUser');
+      // Let useAuthSync handle navigation via Firestore
+    }
+    return Promise.reject(error);
+  }
+);
+
+export default api;

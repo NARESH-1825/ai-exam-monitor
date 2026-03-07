@@ -1,0 +1,15 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users — client reads own doc for real-time session watching (cross-tab logout)
+    match /users/{userId} {
+      allow read: if true;
+      allow write: if false;
+    }
+    // All other collections are accessed only via the backend (Firebase Admin SDK)
+    // The Admin SDK bypasses these rules entirely, so no client access needed
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
