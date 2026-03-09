@@ -57,6 +57,12 @@ body {
 .slide-in-right {
   animation: slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
+/* On desktop (md+) cancel side-slide so the centered modal uses fade-in-scale instead */
+@media (min-width: 768px) {
+  .slide-in-right {
+    animation: none;
+  }
+}
 
 /* ── Slide up panel (replaces old sidebar drawer) ─────────────── */
 @keyframes slideInUp {

@@ -95,9 +95,11 @@ const PaperDrawer = ({ paper, onSave, onClose, onDelete, isSelectMode, onSelect 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end">
+    <div className="fixed inset-0 z-50 flex justify-end md:items-center md:justify-center">
       <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative z-10 w-full max-w-md bg-gray-900 border-l border-slate-700/25 h-full flex flex-col slide-in-right">
+      <div className="relative z-10 w-full flex flex-col bg-gray-900
+        max-w-md h-full border-l border-slate-700/25 slide-in-right
+        md:max-w-2xl md:h-auto md:max-h-[90vh] md:rounded-2xl md:border md:border-slate-700/25 md:shadow-2xl md:mx-4 md:slide-in-none fade-in-scale">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-700/20 shrink-0">
           <div className="flex items-center gap-2">
@@ -167,7 +169,7 @@ const PaperDrawer = ({ paper, onSave, onClose, onDelete, isSelectMode, onSelect 
                 {questions.length === 0 && !showQForm && (
                   <p className="text-gray-500 text-xs text-center py-4">No questions yet</p>
                 )}
-                <div className="space-y-1.5 mt-2 max-h-48 overflow-y-auto">
+                <div className="space-y-1.5 mt-2 max-h-48 md:max-h-64 overflow-y-auto">
                   {questions.map((q, i) => (
                     <div key={i} className="bg-white/4 rounded-lg p-2.5 flex gap-2 items-start">
                       <span className="text-blue-400 font-bold text-xs w-5 shrink-0">{i+1}.</span>
