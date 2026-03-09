@@ -11,7 +11,8 @@ const Navbar = () => {
 
   const handleLogout = async () => {
     await dispatch(logoutUser());
-    toast.info('Logged out successfully');
+    toast.info('Logged out successfully',{ className: 'custom-toast',
+    bodyClassName: 'custom-toast-body'});
     navigate('/login', { replace: true });
   };
 

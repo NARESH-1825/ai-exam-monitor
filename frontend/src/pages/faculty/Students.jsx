@@ -276,7 +276,7 @@ const Students = () => {
     api.get('/faculty/students').then(({ data }) => {
       setStudents(data.students || []);
       setLoading(false);
-    }).catch(() => { toast.error('Failed to load students'); setLoading(false); });
+    }).catch(() => { toast.error('Failed to load students', { className: "custom-toast", bodyClassName: "custom-toast-body" }); setLoading(false); });
   }, []);
 
   const loadDetail = async (sid) => {
@@ -284,7 +284,7 @@ const Students = () => {
     try {
       const { data } = await api.get(`/faculty/students/${sid}`);
       setDetail(data);
-    } catch { toast.error('Failed to load student detail'); }
+    } catch { toast.error('Failed to load student detail', { className: "custom-toast", bodyClassName: "custom-toast-body" }); }
     setDetailLoading(false);
   };
 
@@ -305,8 +305,8 @@ const Students = () => {
       setStudents(prev => prev.map(s => (s.id || s._id) === studentId ? { ...s, isBlocked: !isBlocked } : s));
       if (selected && (selected.id || selected._id) === studentId) setSelected(s => ({ ...s, isBlocked: !isBlocked }));
       if (detail?.student) setDetail(d => ({ ...d, student: { ...d.student, isBlocked: !isBlocked } }));
-      toast.success(`${name} ${action === 'block' ? 'blocked' : 'unblocked'}`);
-    } catch (err) { toast.error(err.response?.data?.message || `Failed to ${action}`); }
+      toast.success(`${name} ${action === 'block' ? 'blocked' : 'unblocked'}`, { className: 'custom-toast', bodyClassName: 'custom-toast-body' });
+    } catch (err) { toast.error(err.response?.data?.message || `Failed to ${action}`, { className: 'custom-toast', bodyClassName: 'custom-toast-body' }); }
     setBlockingId(null);
   }, [selected, detail]);
 

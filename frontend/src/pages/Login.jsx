@@ -84,11 +84,11 @@ const Login = () => {
   const handleLogin = async (e) => {
     e.preventDefault();
     const emailErr = validateEmail(form.email);
-    if (emailErr) { toast.error(emailErr); return; }
+    if (emailErr) { toast.error(emailErr, { className: 'custom-toast', bodyClassName: 'custom-toast-body' }); return; }
     const result = await dispatch(loginUser({ email: form.email, password: form.password }));
     if (result.meta.requestStatus === 'fulfilled') {
       const role = result.payload.user.role;
-      toast.success(`Welcome back, ${result.payload.user.name}!`);
+      toast.success(`Welcome back, ${result.payload.user.name}!`, { className: 'custom-toast', bodyClassName: 'custom-toast-body' });
       navigate(role === 'student' ? '/student' : '/faculty', { replace: true });
     }
   };
@@ -100,16 +100,16 @@ const Login = () => {
     const passErr  = validatePassword(form.password);
     setFieldErrors({ name: nameErr, email: emailErr, password: passErr });
     setTouched({ name: true, email: true, password: true });
-    if (nameErr || emailErr || passErr) { toast.error('Please fix the validation errors'); return; }
+    if (nameErr || emailErr || passErr) { toast.error('Please fix the validation errors', { className: 'custom-toast', bodyClassName: 'custom-toast-body' }); return; }
     setRegLoading(true);
     try {
       await api.post('/auth/register', form);
-      toast.success('Account created! You can now log in.');
+      toast.success('Account created! You can now log in.', { className: 'custom-toast', bodyClassName: 'custom-toast-body' });
       setTab('login');
       setForm(p => ({ ...p, name: '', password: '', rollNumber: '', department: '' }));
       setFieldErrors({}); setTouched({});
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Registration failed');
+      toast.error(err.response?.data?.message || 'Registration failed', { className: 'custom-toast', bodyClassName: 'custom-toast-body' });
     }
     setRegLoading(false);
   };

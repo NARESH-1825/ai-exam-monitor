@@ -1,4 +1,47 @@
-// backend/config/firebase.js
+const admin = require("firebase-admin");
+let db = null;
+
+function initFirebase() {
+  if (admin.apps.length) {
+    db = admin.firestore();
+    return db;
+  }
+
+  let credential;
+
+  try {
+    if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+      const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+      credential = admin.credential.cert(serviceAccount);
+    } else {
+      // Local dev: read from file
+      credential = admin.credential.cert(
+        require("../firebase-service-account.json"),
+      );
+    }
+
+    admin.initializeApp({ credential });
+    console.log("✅ Firebase Admin initialized");
+
+    db = admin.firestore();
+    console.log("✅ Firebase Admin SDK initialized");
+    return db;
+  } catch (err) {
+    console.error("❌ Firebase initialization error:", err.message);
+    process.exit(1);
+  }
+
+  // Production: read from environment variable
+}
+
+const getDB = () => {
+  if (!db) throw new Error("Firebase not initialized");
+  return db;
+};
+
+module.exports = { initFirebase, getDB, admin };
+
+/*
 const admin = require("firebase-admin");
 
 let db = null;
@@ -8,7 +51,6 @@ const initFirebase = () => {
     db = admin.firestore();
     return db;
   }
-
   try {
     // Validate required environment variables
     const requiredEnvVars = [
@@ -74,3 +116,4 @@ const getDB = () => {
 };
 
 module.exports = { initFirebase, getDB, admin };
+*/

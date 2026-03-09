@@ -19,7 +19,25 @@ const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
   "http://127.0.0.1:5173",
-].filter(Boolean);
+]
+  .filter(Boolean)
+  .map((o) => o.replace(/\/$/, ""));
+
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow no-origin requests (curl, Postman, server-to-server)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.warn(`CORS blocked: ${origin}`);
+      callback(new Error(`Origin not allowed: ${origin}`));
+    }
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"],
+};
 
 const io = new Server(server, {
   cors: {
@@ -34,6 +52,10 @@ initFirebase();
 
 // Middlewares
 app.use(helmet({ contentSecurityPolicy: false }));
+
+app.options("*", cors(corsOptions));
+app.use(cors(corsOptions));
+
 app.use(
   cors({
     origin: allowedOrigins,

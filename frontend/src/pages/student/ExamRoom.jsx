@@ -202,7 +202,7 @@ const ExamRoom = () => {
       }
       submittedRef.current = false; // allow retry on genuine network error
       setSubmitting(false);
-      toast.error('Submission failed. Retrying...');
+      toast.error('Submission failed. Retrying...', { className: 'custom-toast', bodyClassName: 'custom-toast-body' });
       setTimeout(() => submitRef.current?.(auto, reason, cheated), 3000);
     }
   }, [submitting, phase]);
@@ -212,7 +212,7 @@ const ExamRoom = () => {
   // ── Violation limit callback ──────────────────────────────────────────────
   const onViolationLimit = useCallback(() => {
     if (submittedRef.current) return; // backend already auto-submitted via socket
-    toast.error('🚫 Exam auto-submitted due to violations.', { autoClose: false });
+    toast.error('🚫 Exam auto-submitted due to violations.', { autoClose: false, className: 'custom-toast', bodyClassName: 'custom-toast-body' });
     setTimeout(() => submitRef.current?.(true, 'Violation limit reached', true), 800);
   }, []);
 
@@ -234,7 +234,7 @@ const ExamRoom = () => {
   useEffect(() => {
     if (!socket) return;
     const onBlocked = ({ reason }) => {
-      toast.error(`🚫 ${reason}`, { autoClose: false });
+      toast.error(`🚫 ${reason}`, { autoClose: false, className: 'custom-toast', bodyClassName: 'custom-toast-body' });
       clearInterval(timerRef.current);
       setProctorReady(false);
       submittedRef.current = true; // prevent frontend from also trying to submit
@@ -242,7 +242,7 @@ const ExamRoom = () => {
       setTimeout(() => navigate('/student', { replace: true }), 2500);
     };
     const onEnded = () => {
-      toast.info('⏰ Exam ended by faculty. Auto-submitting...');
+      toast.info('⏰ Exam ended by faculty. Auto-submitting...', { className: 'custom-toast', bodyClassName: 'custom-toast-body' });
       setTimeout(() => submitRef.current?.(true, 'Faculty ended exam'), 1500);
     };
     socket.on('exam:blocked', onBlocked);
