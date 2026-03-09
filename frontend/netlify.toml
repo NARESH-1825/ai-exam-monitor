@@ -1,6 +1,6 @@
 [build]
+  base = "frontend"
   command = "npm install && npm run build"
-  functions = "netlify/functions"
   publish = "dist"
 
 [dev]
@@ -8,14 +8,6 @@
   port = 5173
 
 [[redirects]]
-  from = "/api/*"
-  to = "/.netlify/functions/api/:splat"
-  status = 200
-
-[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200
-
-[env.production]
-  environment = { VITE_API_URL = "https://ai-exam-monitor-backend.onrender.com/api", VITE_SOCKET_URL = "https://ai-exam-monitor-backend.onrender.com" }

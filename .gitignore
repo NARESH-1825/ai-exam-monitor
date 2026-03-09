@@ -9,7 +9,7 @@ backend/.env
 frontend/.env
 
 # Firebase Service Account — NEVER COMMIT THIS
-backend/firebase-service-account.json
+
 
 # Build
 dist/
