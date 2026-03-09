@@ -3,15 +3,17 @@
 Full-stack AI-proctored exam platform using **Firebase Firestore** as the database.
 
 ## ✨ Auth Features
-| Feature | How it works |
-|---------|-------------|
-| **Single-device login** | New login generates a new `sessionId` in Firestore. Old sessions get `SESSION_INVALIDATED` on next API call or via real-time Firestore listener |
-| **Auto-login on new tab** | If valid token in localStorage, new tab verifies it with server and auto-logs in |
-| **Cross-tab logout** | Logout clears `activeSessionId` in Firestore. All tabs watching the user doc detect the change and redirect to `/login` simultaneously |
+
+| Feature                   | How it works                                                                                                                                    |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Single-device login**   | New login generates a new `sessionId` in Firestore. Old sessions get `SESSION_INVALIDATED` on next API call or via real-time Firestore listener |
+| **Auto-login on new tab** | If valid token in localStorage, new tab verifies it with server and auto-logs in                                                                |
+| **Cross-tab logout**      | Logout clears `activeSessionId` in Firestore. All tabs watching the user doc detect the change and redirect to `/login` simultaneously          |
 
 ## 🚀 Quick Start
 
 ### Prerequisites
+
 - Node.js 18+
 - Firebase project (already configured)
 - Firebase Admin SDK service account JSON
@@ -57,14 +59,14 @@ See **FIRESTORE_SETUP.md** for detailed Firebase configuration steps.
 └───────────────────┬─────────────────────┘
                     │ HTTP + WebSocket
 ┌───────────────────▼─────────────────────┐
-│         Express Backend                  │
-│  • JWT auth + session validation         │
+│         Express Backend                 │
+│  • JWT auth + session validation        │
 │  • Socket.io proctoring events          │
 │  • Firebase Admin SDK                   │
 └───────────────────┬─────────────────────┘
                     │ Admin SDK (bypasses rules)
 ┌───────────────────▼─────────────────────┐
-│         Firebase Firestore               │
+│         Firebase Firestore              │
 │  Collections: users, exams, questions,  │
 │  submissions, proctoringLogs            │
 └─────────────────────────────────────────┘
