@@ -18,6 +18,7 @@ import QuestionBank from "./pages/faculty/QuestionBank";
 import ExamConfig from "./pages/faculty/ExamConfig";
 import LiveMonitor from "./pages/faculty/LiveMonitor";
 import Students from "./pages/faculty/Students";
+import ImportQuestionPaper from "./pages/faculty/ImportQuestionPaper";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 // Inner component so useAuthSync can use hooks inside Router
@@ -134,6 +135,14 @@ function AppRoutes() {
         element={
           <ProtectedRoute role="faculty">
             <LiveMonitor />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/faculty/import"
+        element={
+          <ProtectedRoute role="faculty">
+            <ImportQuestionPaper />
           </ProtectedRoute>
         }
       />

@@ -25,15 +25,24 @@ exports.getStudentDetail = async (req, res) => {
     if (!userDoc.exists) return res.status(404).json({ message: 'Student not found' });
     const { password: _, activeSessionId: __, activeDeviceFingerprint: ___, ...safe } = userDoc.data();
 
+    // ── Fetch this faculty's own exam IDs first ───────────────────────────────
+    const facultyExamsSnap = await db.collection('exams')
+      .where('faculty', '==', req.user.userId).get();
+    const facultyExamIds = new Set(facultyExamsSnap.docs.map(d => d.id));
+
     const subsSnap = await db.collection('submissions')
       .where('student', '==', req.params.id)
       .get();
 
-    // Deduplicate by exam — keep latest per exam
+    // ── Deduplicate by exam — keep latest per exam ────────────────────────────
     const byExam = {};
     subsSnap.docs.forEach(d => {
       const sub = { id: d.id, ...d.data() };
       const examId = typeof sub.exam === 'string' ? sub.exam : (sub.exam?.id || '');
+
+      // FILTER: only include submissions for this faculty's exams
+      if (!facultyExamIds.has(examId)) return;
+
       if (!byExam[examId] || (sub.createdAt || '') > (byExam[examId].createdAt || '')) {
         byExam[examId] = sub;
       }
@@ -56,8 +65,6 @@ exports.getStudentDetail = async (req, res) => {
           };
         }
       }
-      // Fetch violation events from proctoring log.
-      // violationCount is also stored on the submission doc itself — use whichever is higher.
       const submissionViolationCount = sub.violationCount || 0;
       try {
         const logSnap = await db.collection('proctoringLogs')
@@ -66,14 +73,12 @@ exports.getStudentDetail = async (req, res) => {
         if (!logSnap.empty) {
           const log = logSnap.docs[0].data();
           sub.violationEvents = log.events || [];
-          // Use the highest count across: log.violationCount, log.events.length, submission.violationCount
           sub.violationCount = Math.max(
             log.violationCount || 0,
             sub.violationEvents.length,
             submissionViolationCount
           );
         } else {
-          // No log doc — fall back to the count already on the submission document
           sub.violationEvents = [];
           sub.violationCount  = submissionViolationCount;
         }
@@ -283,6 +288,18 @@ exports.getPapers = async (req, res) => {
     const papers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     papers.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
     res.json({ papers });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.getPaper = async (req, res) => {
+  try {
+    const db = getDB();
+    const doc = await db.collection('questionPapers').doc(req.params.id).get();
+    if (!doc.exists || doc.data().facultyId !== req.user.userId)
+      return res.status(404).json({ message: 'Paper not found' });
+    res.json({ paper: { id: doc.id, ...doc.data() } });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

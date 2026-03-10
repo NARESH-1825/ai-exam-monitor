@@ -181,7 +181,7 @@ const StudentDetailPanel = ({ student, detail, detailLoading, onBack, onBlock, b
                 {/* Stats row */}
                 <div className="grid grid-cols-4 gap-2 mb-4">
                   {[
-                    { label: 'Exams',  val: subs.length,  color: 'text-blue-400'   },
+                    { label: 'Your Exams',  val: subs.length,  color: 'text-blue-400'   },
                     { label: 'Passed', val: passed,        color: 'text-green-400'  },
                     { label: 'Avg',    val: avg !== null ? `${avg}%` : '—', color: 'text-yellow-400' },
                     { label: 'Term.',  val: cheated,       color: cheated > 0 ? 'text-red-400' : 'text-gray-500' },
@@ -234,12 +234,12 @@ const StudentDetailPanel = ({ student, detail, detailLoading, onBack, onBlock, b
           {/* Exam history list */}
           <div className="bg-gray-800/50 border border-slate-700/20 rounded-2xl p-4">
             <h5 className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">
-              Exam History ({subs.length})
+              Your Exams History ({subs.length})
             </h5>
             {detailLoading ? (
               <div className="text-center py-6 text-gray-400"><div className="animate-pulse text-2xl mb-2">⏳</div></div>
             ) : subs.length === 0 ? (
-              <p className="text-gray-500 text-sm text-center py-4">No exams taken</p>
+              <p className="text-gray-500 text-sm text-center py-4">No exams taken for your courses yet</p>
             ) : (
               <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
                 {subs.map((sub, i) => {

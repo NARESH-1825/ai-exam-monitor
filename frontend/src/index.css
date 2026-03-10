@@ -246,6 +246,26 @@ body {
   padding: 1.5rem;
 }
 
+/* ── Mobile bottom nav — always fixed at bottom ────────────────── */
+.mobile-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 40;
+  background: rgba(17, 24, 39, 0.97);
+  border-top: 1px solid rgba(148, 163, 184, 0.12);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Add bottom padding on mobile so content doesn't hide behind fixed nav */
+@media (max-width: 767px) {
+  .dashboard-content {
+    padding-bottom: 5rem;
+  }
+}
+
 /* ── Muted border utility ──────────────────────────────────────── */
 .border-muted {
   border-color: rgba(148, 163, 184, 0.08);

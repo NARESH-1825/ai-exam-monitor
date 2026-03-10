@@ -152,6 +152,27 @@ const PaperDrawer = ({
   const [showQForm, setShowQForm] = useState(false);
   const [editingIdx, setEditingIdx] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [fetchingFull, setFetchingFull] = useState(false);
+
+  // FIX: When switching to edit mode for an existing paper, always fetch fresh
+  // full data (including all questions) from the server. The list API may return
+  // a stale / stripped copy, causing questions to appear blank.
+  useEffect(() => {
+    if (mode === "edit" && paper?.id) {
+      setFetchingFull(true);
+      api.get(`/faculty/papers/${paper.id}`)
+        .then(({ data }) => {
+          setTitle(data.paper?.title || paper.title || "");
+          setQuestions(data.paper?.questions || paper.questions || []);
+        })
+        .catch(() => {
+          // Fall back to the data we already have
+          setTitle(paper.title || "");
+          setQuestions(paper.questions || []);
+        })
+        .finally(() => setFetchingFull(false));
+    }
+  }, [mode, paper?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSave = async () => {
     if (!title.trim()) {
@@ -319,9 +340,12 @@ const PaperDrawer = ({
                     {showQForm ? "✕ Cancel" : "+ Add"}
                   </button>
                 </div>
+                {fetchingFull && (
+                  <p className="text-xs text-blue-400 text-center py-2 animate-pulse">Loading questions…</p>
+                )}
                 {showQForm && (
                   <QuestionForm
-                    q={null}
+                    q={editingIdx !== null ? questions[editingIdx] : null}
                     idx={editingIdx}
                     onSave={(q) => {
                       if (editingIdx !== null)
@@ -530,12 +554,20 @@ const QuestionBank = () => {
   };
 
   const headerActions = !isSelectMode && (
-    <button
-      onClick={() => setDrawerPaper(null)}
-      className="text-xs px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded-lg font-medium text-white transition-colors"
-    >
-      + New Paper
-    </button>
+    <div className="flex gap-2">
+      <button
+        onClick={() => navigate("/faculty/import")}
+        className="text-xs px-3 py-1.5 bg-purple-600 hover:bg-purple-500 rounded-lg font-medium text-white transition-colors"
+      >
+        📥 Import
+      </button>
+      <button
+        onClick={() => setDrawerPaper(null)}
+        className="text-xs px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded-lg font-medium text-white transition-colors"
+      >
+        + New Paper
+      </button>
+    </div>
   );
 
   return (

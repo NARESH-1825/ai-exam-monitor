@@ -329,18 +329,39 @@ const ExamRoom = () => {
       )}
 
       {/* ── Header ── */}
-      <header className="bg-gray-800 border-b border-slate-700/30 px-4 py-3 flex items-center gap-3 shrink-0 z-10">
-        <h1 className="font-bold truncate flex-1 text-sm sm:text-base">🔒 {examData.title}</h1>
-        <div className={`font-mono font-bold text-lg px-3 py-1 rounded-lg shrink-0 ${
-          timeLeft < 300 ? 'text-red-400 bg-red-900/30 animate-pulse' :
-          timeLeft < 600 ? 'text-yellow-400 bg-yellow-900/20' : 'text-green-400 bg-green-900/20'}`}>
-          ⏱ {fmt(timeLeft)}
+      <header className="bg-gray-800 border-b border-slate-700/30 px-4 py-2 shrink-0 z-10">
+        {/* Row 1 (mobile): exam title full width */}
+        <div className="flex items-center gap-2 sm:hidden mb-1.5">
+          <span className="text-base">🔒</span>
+          <h1 className="font-bold truncate flex-1 text-sm leading-tight">{examData.title}</h1>
         </div>
-        <button
-          onClick={() => setShowConfirm(true)}
-          className="shrink-0 w-8 h-8 bg-red-700 hover:bg-red-600 rounded-lg flex items-center justify-center font-bold transition-colors"
-          title="Submit exam"
-        >✕</button>
+        {/* Row 2 (mobile): timer + submit */}
+        <div className="flex items-center justify-between sm:hidden">
+          <div className={`font-mono font-bold text-base px-2.5 py-1 rounded-lg ${
+            timeLeft < 300 ? 'text-red-400 bg-red-900/30 animate-pulse' :
+            timeLeft < 600 ? 'text-yellow-400 bg-yellow-900/20' : 'text-green-400 bg-green-900/20'}`}>
+            ⏱ {fmt(timeLeft)}
+          </div>
+          <button
+            onClick={() => setShowConfirm(true)}
+            className="w-8 h-8 bg-red-700 hover:bg-red-600 rounded-lg flex items-center justify-center font-bold transition-colors"
+            title="Submit exam"
+          >✕</button>
+        </div>
+        {/* Single row (sm+): original layout */}
+        <div className="hidden sm:flex items-center gap-3">
+          <h1 className="font-bold truncate flex-1 text-base">🔒 {examData.title}</h1>
+          <div className={`font-mono font-bold text-lg px-3 py-1 rounded-lg shrink-0 ${
+            timeLeft < 300 ? 'text-red-400 bg-red-900/30 animate-pulse' :
+            timeLeft < 600 ? 'text-yellow-400 bg-yellow-900/20' : 'text-green-400 bg-green-900/20'}`}>
+            ⏱ {fmt(timeLeft)}
+          </div>
+          <button
+            onClick={() => setShowConfirm(true)}
+            className="shrink-0 w-8 h-8 bg-red-700 hover:bg-red-600 rounded-lg flex items-center justify-center font-bold transition-colors"
+            title="Submit exam"
+          >✕</button>
+        </div>
       </header>
 
       {/* ── Body ── */}

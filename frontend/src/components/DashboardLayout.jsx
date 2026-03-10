@@ -14,6 +14,7 @@ const STUDENT_NAV = [
 const FACULTY_NAV = [
   { to: "/faculty", icon: "🏠", label: "Dashboard" },
   { to: "/faculty/questions", icon: "📚", label: "Question Bank" },
+  { to: "/faculty/import", icon: "📥", label: "Import Paper" },
   { to: "/faculty/exam-config", icon: "⚙️", label: "Create Exam" },
   { to: "/faculty/students", icon: "👥", label: "Students" },
 ];
@@ -90,6 +91,36 @@ const ProfileModal = ({ user, onClose }) => (
   </div>
 );
 
+/* ── Mobile Bottom Nav (fixed) ──────────────────────────── */
+const MobileBottomNav = ({ navLinks, onLogout }) => {
+  const { pathname } = useLocation();
+  return (
+    <nav className="mobile-bottom-nav md:hidden flex">
+      {navLinks.map(({ to, icon, label }) => {
+        const isActive = pathname === to || (to.length > 1 && pathname.startsWith(to));
+        return (
+          <Link
+            key={to}
+            to={to}
+            className={`flex-1 flex flex-col items-center justify-center py-2.5 text-xs gap-0.5 transition-colors
+              ${isActive ? "text-blue-400" : "text-gray-500 hover:text-gray-300"}`}
+          >
+            <span className="text-lg">{icon}</span>
+            <span className="font-medium">{label}</span>
+          </Link>
+        );
+      })}
+      <button
+        onClick={onLogout}
+        className="flex-1 flex flex-col items-center justify-center py-2.5 text-xs gap-0.5 text-red-400 hover:text-red-300 transition-colors"
+      >
+        <span className="text-lg">🚪</span>
+        <span className="font-medium">Logout</span>
+      </button>
+    </nav>
+  );
+};
+
 /* ── Main Layout ───────────────────────────────────────────────── */
 const DashboardLayout = ({ children, title, actions }) => {
   const dispatch = useDispatch();
@@ -111,10 +142,10 @@ const DashboardLayout = ({ children, title, actions }) => {
   };
 
   const sidebarContent = (onLinkClick) => (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full overflow-hidden">
       {/* Logo */}
       <div
-        className={`flex items-center gap-2.5 px-4 py-4 border-b border-slate-700/20 ${collapsed ? "justify-center" : ""}`}
+        className={`flex items-center gap-2.5 px-4 py-4 border-b border-slate-700/20 shrink-0 ${collapsed ? "justify-center" : ""}`}
       >
         <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-sm shrink-0">
           🎓
@@ -129,8 +160,8 @@ const DashboardLayout = ({ children, title, actions }) => {
         )}
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 py-3 overflow-y-auto">
+      {/* Nav — scrollable middle section */}
+      <nav className="flex-1 py-3 overflow-y-auto min-h-0">
         {navLinks.map((item) => (
           <NavItem
             key={item.to}
@@ -141,9 +172,9 @@ const DashboardLayout = ({ children, title, actions }) => {
         ))}
       </nav>
 
-      {/* User + Logout */}
+      {/* User + Logout — ALWAYS visible, never pushed off-screen */}
       <div
-        className={`border-t border-slate-700/20 p-3 ${collapsed ? "flex flex-col items-center gap-2" : ""}`}
+        className={`border-t border-slate-700/20 p-3 shrink-0 ${collapsed ? "flex flex-col items-center gap-2" : ""}`}
       >
         {!collapsed && (
           <div className="flex items-center gap-2.5 px-2 py-2 mb-2">
@@ -250,31 +281,8 @@ const DashboardLayout = ({ children, title, actions }) => {
         {/* Content */}
         <main className="dashboard-content">{children}</main>
 
-        {/* ── Mobile Bottom Nav ─── */}
-        <nav className="md:hidden flex border-t border-slate-700/20 bg-gray-900/95 backdrop-blur shrink-0">
-          {navLinks.map(({ to, icon, label }) => {
-            const { pathname } = { pathname: window.location.pathname };
-            const isActive = pathname === to;
-            return (
-              <Link
-                key={to}
-                to={to}
-                className={`flex-1 flex flex-col items-center justify-center py-2.5 text-xs gap-0.5 transition-colors
-                  ${isActive ? "text-blue-400" : "text-gray-500 hover:text-gray-300"}`}
-              >
-                <span className="text-lg">{icon}</span>
-                <span className="font-medium">{label}</span>
-              </Link>
-            );
-          })}
-          <button
-            onClick={handleLogout}
-            className="flex-1 flex flex-col items-center justify-center py-2.5 text-xs gap-0.5 text-red-400 hover:text-red-300 transition-colors"
-          >
-            <span className="text-lg">🚪</span>
-            <span className="font-medium">Logout</span>
-          </button>
-        </nav>
+        {/* ── Mobile Bottom Nav — FIXED at bottom, always visible ─── */}
+        <MobileBottomNav navLinks={navLinks} onLogout={handleLogout} />
       </div>
 
       {/* ── Profile Modal (faculty & student both can see) ─── */}

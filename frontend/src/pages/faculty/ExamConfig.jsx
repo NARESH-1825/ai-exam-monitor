@@ -23,7 +23,29 @@ const DEFAULT_FORM = {
   pageCloseTime: 0,
   passingScore: 40,
   proctoring: { ...DEFAULT_PROC },
+  noiseSensitivity: 1, // 0=low(any sound) 1=medium(voices) 2=high(loud only)
 };
+
+const NOISE_LEVELS = [
+  {
+    id: 0, label: 'Low', icon: '🔇',
+    color: 'text-red-400', bg: 'bg-red-900/20 border-red-700/40',
+    desc: 'Detects even small sounds',
+    examples: ['Whispering', 'Fan noise', 'Keyboard clicks', 'Breathing'],
+  },
+  {
+    id: 1, label: 'Medium', icon: '🔉',
+    color: 'text-yellow-400', bg: 'bg-yellow-900/20 border-yellow-700/40',
+    desc: 'Ignores background noise, detects voices',
+    examples: ['Normal speaking', 'Ignores: fan/rain/AC', 'Clear words'],
+  },
+  {
+    id: 2, label: 'High', icon: '🔊',
+    color: 'text-green-400', bg: 'bg-green-900/20 border-green-700/40',
+    desc: 'Only loud, sustained noise triggers',
+    examples: ['Shouting', 'Loud music', 'Ignores: normal voices'],
+  },
+];
 
 const STEPS = ["Basic Info", "Timers", "Proctoring", "Question Paper"];
 
@@ -116,6 +138,11 @@ const ExamConfig = () => {
           _id: q.id || q._id || Math.random().toString(36).slice(2),
         })),
         proctorCount: activeCount,
+        // Pass sensitivity so useProctor can read it from examData.proctoring
+        proctoring: {
+          ...form.proctoring,
+          noiseSensitivity: form.noiseSensitivity,
+        },
       };
       await api.post("/exam", payload);
       sessionStorage.removeItem(STORAGE_KEY);
@@ -345,36 +372,91 @@ const ExamConfig = () => {
                   const m = PROCTOR_META[key];
                   const on = form.proctoring[key];
                   return (
-                    <div
-                      key={key}
-                      onClick={() => toggle(key)}
-                      className={`flex items-start gap-4 p-4 rounded-xl cursor-pointer border transition-all ${
-                        on
-                          ? "bg-blue-900/20 border-blue-700/50"
-                          : "bg-white/3 border-white/8 hover:border-white/15"
-                      }`}
-                    >
+                    <div key={key}>
                       <div
-                        className={`w-10 h-5.5 rounded-full flex items-center shrink-0 mt-0.5 transition-colors pt-0.5 ${on ? "bg-blue-600" : "bg-gray-600"}`}
-                        style={{ height: "22px" }}
+                        onClick={() => toggle(key)}
+                        className={`flex items-start gap-4 p-4 rounded-xl cursor-pointer border transition-all ${
+                          on ? "bg-blue-900/20 border-blue-700/50" : "bg-white/3 border-white/8 hover:border-white/15"
+                        }`}
                       >
                         <div
-                          className={`w-4 h-4 bg-white rounded-full mx-0.5 shadow transition-transform ${on ? "translate-x-4" : "translate-x-0"}`}
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p
-                          className={`text-sm font-semibold ${on ? "text-white" : "text-gray-300"}`}
+                          className={`w-10 rounded-full flex items-center shrink-0 mt-0.5 transition-colors pt-0.5 ${on ? "bg-blue-600" : "bg-gray-600"}`}
+                          style={{ height: "22px" }}
                         >
-                          {m.icon} {m.label}
-                        </p>
-                        <p className="text-xs text-gray-400 mt-0.5">{m.desc}</p>
-                        {on && (
-                          <p className="text-xs text-amber-300 mt-1 bg-amber-900/20 rounded px-2 py-0.5 inline-block">
-                            "{m.rule}"
+                          <div className={`w-4 h-4 bg-white rounded-full mx-0.5 shadow transition-transform ${on ? "translate-x-4" : "translate-x-0"}`} />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-sm font-semibold ${on ? "text-white" : "text-gray-300"}`}>
+                            {m.icon} {m.label}
                           </p>
-                        )}
+                          <p className="text-xs text-gray-400 mt-0.5">{m.desc}</p>
+                          {on && (
+                            <p className="text-xs text-amber-300 mt-1 bg-amber-900/20 rounded px-2 py-0.5 inline-block">
+                              {m.rule}
+                            </p>
+                          )}
+                        </div>
                       </div>
+
+                      {/* Noise sensitivity slider — shown only when noiseDetection is ON */}
+                      {key === 'noiseDetection' && on && (() => {
+                        const lvl = NOISE_LEVELS[form.noiseSensitivity] || NOISE_LEVELS[1];
+                        return (
+                          <div className="mt-1 mb-1 ml-4 pl-3 border-l-2 border-blue-700/40">
+                            <p className="text-xs text-gray-400 mb-2 font-medium">🎚️ Noise Sensitivity</p>
+
+                            {/* YouTube-style volume slider */}
+                            <div className="flex items-center gap-3 mb-3">
+                              <span className="text-lg">🔇</span>
+                              <div className="relative flex-1 h-2 bg-gray-700 rounded-full cursor-pointer">
+                                <div
+                                  className="absolute inset-y-0 left-0 bg-gradient-to-r from-red-500 via-yellow-400 to-green-500 rounded-full transition-all"
+                                  style={{ width: `${(form.noiseSensitivity / 2) * 100}%` }}
+                                />
+                                <input
+                                  type="range" min={0} max={2} step={1}
+                                  value={form.noiseSensitivity}
+                                  onClick={e => e.stopPropagation()}
+                                  onChange={e => {
+                                    e.stopPropagation();
+                                    setForm(p => ({ ...p, noiseSensitivity: +e.target.value }));
+                                  }}
+                                  className="absolute inset-0 w-full opacity-0 cursor-pointer h-full"
+                                />
+                                {/* Tick marks */}
+                                <div className="absolute inset-0 flex justify-between items-center px-0">
+                                  {[0,1,2].map(i => (
+                                    <div key={i} className={`w-3 h-3 rounded-full border-2 transition-colors ${
+                                      form.noiseSensitivity >= i ? 'border-transparent' : 'border-gray-500 bg-gray-700'
+                                    }`} />
+                                  ))}
+                                </div>
+                              </div>
+                              <span className="text-lg">🔊</span>
+                            </div>
+
+                            {/* Level info card */}
+                            <div className={`rounded-xl border p-3 ${lvl.bg}`}>
+                              <div className="flex items-center gap-2 mb-1.5">
+                                <span className="text-base">{lvl.icon}</span>
+                                <span className={`text-xs font-bold uppercase tracking-wide ${lvl.color}`}>{lvl.label}</span>
+                                <span className="text-xs text-gray-400">— {lvl.desc}</span>
+                              </div>
+                              <div className="flex flex-wrap gap-1.5">
+                                {lvl.examples.map((ex, i) => (
+                                  <span key={i} className={`text-xs px-2 py-0.5 rounded-full border ${
+                                    ex.startsWith('Ignores') ? 'border-gray-600 bg-gray-800/60 text-gray-400 italic' :
+                                    i === 0 ?  `${lvl.bg} ${lvl.color} font-medium` : 'border-slate-700/30 bg-white/5 text-gray-300'
+                                  }`}>{ex}</span>
+                                ))}
+                              </div>
+                              <p className="text-xs text-gray-500 mt-2">
+                                ⚠️ 3 detections = 1 violation. 3 violations → auto-submit.
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })()}
                     </div>
                   );
                 })}
