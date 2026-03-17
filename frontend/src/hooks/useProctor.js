@@ -4,11 +4,46 @@
 //   - Limit is always 3; at 3 → onViolationLimit() callback fires → auto-submit
 //   - Proctoring is SILENT to the student — no UI shown during exam
 //   - Only the proctoring types enabled on the exam are active
+//
+// FIX (v2):
+//   - Per-type debounce cooldowns (all 1000ms) — never misses rapid events
+//   - window.blur added — catches Alt+Tab, minimize, and new-window focus loss
+//   - F1–F12 all detected and blocked (not just F12)
+//   - Ctrl+T, Ctrl+N, Ctrl+W, Ctrl+R, Ctrl+Tab all blocked and logged
+//   - Fullscreen violation fires immediately (no 800ms grace delay)
+//   - Fullscreen polling fallback every 2s for edge-case miss
+
 import { useEffect, useRef, useCallback } from 'react';
 import { useDispatch } from 'react-redux';
 import { addEvent, setViolationCount } from '../features/proctor/proctorSlice';
 
 export const VIOLATION_LIMIT = 3;
+
+// Per-type debounce cooldowns in ms — all set to 1000ms for maximum detection
+const DEBOUNCE_MS = {
+  TAB_SWITCH:        1000,
+  COPY_ATTEMPT:      1000,
+  DEVTOOLS_ATTEMPT:  1000,
+  FULLSCREEN_EXIT:   1000,
+  FUNCTION_KEY:      1000,
+  FACE_NOT_FOUND:    1000,
+  MULTIPLE_FACES:    1000,
+  GAZE_AWAY:         1000,
+  NOISE_DETECTED:    1000,
+  OBJECT_DETECTED:   1000,
+};
+const DEFAULT_DEBOUNCE_MS = 1000;
+
+// All function keys to block and detect
+const BLOCKED_FKEYS = new Set([
+  'F1','F2','F3','F4','F5','F6','F7','F8','F9','F10','F11','F12',
+]);
+
+// All Ctrl+key combos to block
+const BLOCKED_CTRL_KEYS = new Set([
+  'c','v','a','x','u','s','p', // copy/paste/select/cut/source/save/print
+  't','n','w','r',             // new tab/new window/close tab/reload
+]);
 
 // Shared metadata — used in ExamConfig (toggle UI), Assessments (permission modal),
 // and LiveMonitor (violation labels). Single source of truth.
@@ -43,10 +78,10 @@ export const PROCTOR_META = {
   },
   tabSwitchLock: {
     key: 'tabSwitchLock', icon: '🔒', label: 'Tab Switch Lock',
-    desc: 'Switching browser tabs, minimising, or copy/paste attempts are detected.',
+    desc: 'Switching browser tabs, minimising, Alt+Tab, or copy/paste attempts are detected.',
     needsCam: false, needsMic: false,
-    rule: 'Do not switch tabs, minimise the browser, or use Ctrl+C/V.',
-    violationTypes: ['TAB_SWITCH', 'COPY_ATTEMPT', 'DEVTOOLS_ATTEMPT'],
+    rule: 'Do not switch tabs, minimise the browser, or use Ctrl+C/V/T/N.',
+    violationTypes: ['TAB_SWITCH', 'COPY_ATTEMPT', 'DEVTOOLS_ATTEMPT', 'FUNCTION_KEY'],
   },
   fullScreenForce: {
     key: 'fullScreenForce', icon: '⛶', label: 'Fullscreen Mode',
@@ -121,9 +156,10 @@ export const useProctor = ({
     if (!subRef.current || !logRef.current) return;  // IDs not yet populated
     if (stopped.current) return;                       // limit already reached
 
-    // Debounce: same type fires at most once per 8 s
+    // Per-type debounce: each violation type has its own 1000ms cooldown
     const now = Date.now();
-    if (now - (debounce.current[type] || 0) < 8_000) return;
+    const cooldown = DEBOUNCE_MS[type] ?? DEFAULT_DEBOUNCE_MS;
+    if (now - (debounce.current[type] || 0) < cooldown) return;
     debounce.current[type] = now;
 
     const event = { type, severity, details, timestamp: new Date().toISOString() };
@@ -149,18 +185,70 @@ export const useProctor = ({
   // ── Tab Switch / Browser Lock ─────────────────────────────────────────────
   const setupBrowserLock = useCallback(() => {
     if (!config?.tabSwitchLock) return () => {};
-    const onVis = () => { if (document.hidden) emit('TAB_SWITCH', 'high', 'Student left exam tab'); };
+
+    // visibilitychange — tab hidden (Ctrl+T opens a new tab and switches to it)
+    const onVis = () => {
+      if (document.hidden) emit('TAB_SWITCH', 'high', 'Student left exam tab (tab hidden)');
+    };
+
+    // window.blur — fires on Alt+Tab, Win+D, minimize, or clicking another app/window
+    // This catches cases that visibilitychange misses entirely
+    const onBlur = () => {
+      emit('TAB_SWITCH', 'high', 'Window lost focus (Alt+Tab / minimize / new window)');
+    };
+
+    // Context menu blocked silently
     const onCtx = e => e.preventDefault();
-    const onClip = e => { e.preventDefault(); emit('COPY_ATTEMPT', 'medium', `${e.type} blocked`); };
-    const onKey  = e => {
-      if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && ['i','j','c'].includes(e.key.toLowerCase()))) {
-        e.preventDefault(); emit('DEVTOOLS_ATTEMPT', 'critical', 'DevTools attempt'); return;
+
+    // Clipboard events — copy/cut/paste via right-click or menu
+    const onClip = e => {
+      e.preventDefault();
+      emit('COPY_ATTEMPT', 'medium', `${e.type} blocked`);
+    };
+
+    // Keyboard handler — function keys + Ctrl combos
+    const onKey = e => {
+      // ── Function keys F1–F12 ─────────────────────────────────────────────
+      if (BLOCKED_FKEYS.has(e.key)) {
+        e.preventDefault();
+        // F12 is a DevTools attempt (more critical)
+        if (e.key === 'F12') {
+          emit('DEVTOOLS_ATTEMPT', 'critical', 'F12 (DevTools) pressed');
+        } else {
+          emit('FUNCTION_KEY', 'medium', `${e.key} pressed`);
+        }
+        return;
       }
-      if (e.ctrlKey && ['c','v','a','x','u','s','p'].includes(e.key.toLowerCase())) {
-        e.preventDefault(); emit('COPY_ATTEMPT', 'medium', `Ctrl+${e.key.toUpperCase()}`);
+
+      // ── Ctrl+Shift DevTools combos ────────────────────────────────────────
+      if (e.ctrlKey && e.shiftKey && ['i','j','c'].includes(e.key.toLowerCase())) {
+        e.preventDefault();
+        emit('DEVTOOLS_ATTEMPT', 'critical', `Ctrl+Shift+${e.key.toUpperCase()} (DevTools) attempt`);
+        return;
+      }
+
+      // ── Ctrl+Tab (switch to another tab) ─────────────────────────────────
+      if (e.ctrlKey && e.key === 'Tab') {
+        e.preventDefault();
+        emit('TAB_SWITCH', 'high', 'Ctrl+Tab (tab switch) pressed');
+        return;
+      }
+
+      // ── All blocked Ctrl+Key combos ───────────────────────────────────────
+      if (e.ctrlKey && BLOCKED_CTRL_KEYS.has(e.key.toLowerCase())) {
+        e.preventDefault();
+        // Distinguish new-tab / new-window / close-tab / reload from copy-paste
+        const navKeys = new Set(['t','n','w','r']);
+        if (navKeys.has(e.key.toLowerCase())) {
+          emit('TAB_SWITCH', 'high', `Ctrl+${e.key.toUpperCase()} (browser navigation) blocked`);
+        } else {
+          emit('COPY_ATTEMPT', 'medium', `Ctrl+${e.key.toUpperCase()} blocked`);
+        }
       }
     };
+
     document.addEventListener('visibilitychange', onVis);
+    window.addEventListener('blur', onBlur);
     document.addEventListener('contextmenu', onCtx);
     document.addEventListener('copy', onClip);
     document.addEventListener('cut', onClip);
@@ -168,8 +256,10 @@ export const useProctor = ({
     document.addEventListener('keydown', onKey);
     document.onselectstart = () => false;
     document.body.style.userSelect = 'none';
+
     return () => {
       document.removeEventListener('visibilitychange', onVis);
+      window.removeEventListener('blur', onBlur);
       document.removeEventListener('contextmenu', onCtx);
       document.removeEventListener('copy', onClip);
       document.removeEventListener('cut', onClip);
@@ -184,36 +274,50 @@ export const useProctor = ({
   const setupFullscreenMonitor = useCallback(() => {
     if (!config?.fullScreenForce) return () => {};
 
-    // If not in fullscreen when proctoring starts — try to re-enter
-    const inFsNow = !!(document.fullscreenElement || document.webkitFullscreenElement);
-    if (!inFsNow) {
+    // Helper to check current fullscreen state
+    const isFullscreen = () =>
+      !!(document.fullscreenElement || document.webkitFullscreenElement);
+
+    // Helper to request fullscreen
+    const requestFS = () => {
       const el = document.documentElement;
       const fn = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen;
       fn?.call(el)?.catch(() => {});
-    }
-
-    let wasFS = !!(document.fullscreenElement || document.webkitFullscreenElement);
-    let grace = null;
-    const onFS = () => {
-      const inFS = !!(document.fullscreenElement || document.webkitFullscreenElement);
-      if (wasFS && !inFS && !stopped.current) {
-        clearTimeout(grace);
-        grace = setTimeout(() => {
-          emit('FULLSCREEN_EXIT', 'high', 'Exited fullscreen during exam');
-          // Try to re-enter fullscreen
-          const el = document.documentElement;
-          const fn = el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen;
-          fn?.call(el)?.catch(() => {});
-        }, 800);
-      }
-      wasFS = inFS;
     };
-    document.addEventListener('fullscreenchange', onFS);
-    document.addEventListener('webkitfullscreenchange', onFS);
+
+    // Enter fullscreen if not already in it
+    if (!isFullscreen()) requestFS();
+
+    let wasFS = isFullscreen();
+
+    // Called whenever fullscreen state changes OR polling detects a mismatch
+    const handleFSExit = () => {
+      if (wasFS && !isFullscreen() && !stopped.current) {
+        // Emit immediately — no grace delay
+        emit('FULLSCREEN_EXIT', 'high', 'Exited fullscreen during exam');
+        wasFS = false;
+        // Re-enter fullscreen after 500ms
+        setTimeout(requestFS, 500);
+      } else {
+        wasFS = isFullscreen();
+      }
+    };
+
+    // Primary: event-driven detection
+    document.addEventListener('fullscreenchange', handleFSExit);
+    document.addEventListener('webkitfullscreenchange', handleFSExit);
+
+    // Fallback: poll every 2s to catch edge cases where the event doesn't fire
+    // (e.g. browser-specific bugs, rapid Escape key taps)
+    const poll = setInterval(() => {
+      if (stopped.current) { clearInterval(poll); return; }
+      handleFSExit();
+    }, 2000);
+
     return () => {
-      clearTimeout(grace);
-      document.removeEventListener('fullscreenchange', onFS);
-      document.removeEventListener('webkitfullscreenchange', onFS);
+      clearInterval(poll);
+      document.removeEventListener('fullscreenchange', handleFSExit);
+      document.removeEventListener('webkitfullscreenchange', handleFSExit);
     };
   }, [config?.fullScreenForce, emit]);
 
