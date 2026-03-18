@@ -176,6 +176,9 @@ const ExamRoom = () => {
     submittedRef.current = true;
     setSubmitting(true);
     clearInterval(timerRef.current);
+    
+    // Disable proctoring immediately to prevent fullscreen exit violations
+    setProctorReady(false);
     exitFS();
 
     try {
@@ -191,7 +194,6 @@ const ExamRoom = () => {
       });
       setResult(data.submission);
       setPhase('result');
-      setProctorReady(false); // stop proctoring on submit
     } catch (err) {
       // If backend says already submitted (from socket auto-submit), navigate away cleanly
       const msg = err?.response?.data?.message || '';
@@ -202,6 +204,10 @@ const ExamRoom = () => {
       }
       submittedRef.current = false; // allow retry on genuine network error
       setSubmitting(false);
+      
+      // Re-enable proctoring if submission actually failed so they can't cheat during retry
+      setProctorReady(true);
+      
       toast.error('Submission failed. Retrying...', { className: 'custom-toast', bodyClassName: 'custom-toast-body' });
       setTimeout(() => submitRef.current?.(auto, reason, cheated), 3000);
     }
@@ -322,9 +328,9 @@ const ExamRoom = () => {
       style={{ userSelect: 'none' }}
     >
 
-      {/* ── Hidden camera (offscreen) ── */}
+      {/* ── Hidden camera (offscreen but rendering for detections) ── */}
       {needsCam && (
-        <div className="fixed" style={{ top: '-9999px', left: '-9999px', width: 1, height: 1, overflow: 'hidden' }}>
+        <div style={{ position: 'fixed', opacity: 0, pointerEvents: 'none', zIndex: -9999 }}>
           <Webcam
             ref={videoRef}
             mirrored={false}
