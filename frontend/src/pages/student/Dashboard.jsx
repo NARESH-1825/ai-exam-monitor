@@ -208,26 +208,23 @@ const AllResultsPanel = ({ submissions, onBack }) => {
         };
 
         return (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
-            <div className="lg:col-span-2 bg-gray-800/50 border border-slate-700/20 rounded-2xl p-4">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">📈 Score History</p>
-              <div style={{ height: 180 }}><Line data={lineData} options={chartBase} /></div>
-            </div>
-            <div className="bg-gray-800/50 border border-slate-700/20 rounded-2xl p-4 flex flex-col">
-              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-2">🎯 Breakdown</p>
-              <div style={{ height: 180 }} className="flex items-center justify-center">
-                <Doughnut data={donutData} options={{
-                  responsive: true, maintainAspectRatio: false,
-                  plugins: { legend: { position: 'bottom', labels: { color: '#9ca3af', font: { size: 10 } } } },
-                }} />
-              </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-4">
+          <div className="lg:col-span-2 p-3 sm:p-4 border" style={{borderRadius:'4px',background:'var(--bg-card)',borderColor:'var(--border)'}}>
+            <p className="text-xs font-semibold uppercase tracking-wide mb-3" style={{color:'var(--text-muted)'}}>📈 Score History</p>
+            <div style={{ height: 180 }}><Line data={lineData} options={chartBase} /></div>
+          </div>
+          <div className="p-3 sm:p-4 flex flex-col border" style={{borderRadius:'4px',background:'var(--bg-card)',borderColor:'var(--border)'}}>
+            <p className="text-xs font-semibold uppercase tracking-wide mb-2" style={{color:'var(--text-muted)'}}>🎯 Breakdown</p>
+            <div style={{ height: 180 }} className="flex items-center justify-center">
+              <Doughnut data={donutData} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#9ca3af', font: { size: 10 } } } } }} />
             </div>
           </div>
+        </div>
         );
       })()}
 
       {/* Results list */}
-      <div className="bg-gray-800/50 border border-slate-700/20 rounded-2xl p-4">
+      <div className="p-3 sm:p-4 flex-1 border" style={{borderRadius:'4px',background:'var(--bg-card)',borderColor:'var(--border)'}}>
         <div className="space-y-2 max-h-[50vh] overflow-y-auto pr-1">
           {submissions.length === 0
             ? <p className="text-gray-400 text-sm text-center mt-4">No results yet.</p>
@@ -315,10 +312,9 @@ const StudentDashboard = () => {
   if (showAllResults) {
     return (
       <DashboardLayout title="All Results" actions={null}>
-        <AllResultsPanel
-          submissions={submissions}
-          onBack={() => setShowAllResults(false)}
-        />
+        <div className="page-wrapper">
+          <AllResultsPanel submissions={submissions} onBack={() => setShowAllResults(false)} />
+        </div>
       </DashboardLayout>
     );
   }
@@ -326,87 +322,82 @@ const StudentDashboard = () => {
   /* ── Normal dashboard view ── */
   return (
     <DashboardLayout title="Student Dashboard" actions={topBarActions}>
+      <div className="page-wrapper">
 
       {/* ── Welcome Banner ── */}
-      <div className="bg-gradient-to-r from-blue-900/40 to-purple-900/30 border border-blue-800/20 rounded-2xl p-5 mb-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <div className="p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border"
+        style={{borderRadius:'4px',background:'var(--bg-card)',borderColor:'var(--border)'}}>
         <div>
-          <h2 className="text-lg font-bold text-white">Welcome back, {user?.name?.split(' ')[0]}! 👋</h2>
-          <p className="text-blue-200 text-sm mt-0.5">
+          <h2 className="text-base sm:text-lg lg:text-xl font-bold" style={{color:'var(--text-primary)'}}>Welcome back, {user?.name?.split(' ')[0]}! 👋</h2>
+          <p className="text-xs sm:text-sm mt-0.5" style={{color:'var(--text-secondary)'}}>
             {user?.rollNumber && <span className="mr-3">🎓 {user.rollNumber}</span>}
             {user?.department  && <span>🏛️ {user.department}</span>}
           </p>
         </div>
-        <Link
-          to="/student/assessments"
-          className="shrink-0 px-5 py-2.5 bg-blue-600 hover:bg-blue-500 rounded-xl font-semibold text-sm transition-all shadow-lg shadow-blue-900/30"
-        >
+        <Link to="/student/assessments"
+          className="shrink-0 px-3 py-2 sm:px-4 sm:py-2.5 bg-blue-600 hover:bg-blue-500 text-sm font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-blue-500"
+          style={{borderRadius:'4px'}}>
           📝 Browse Exams →
         </Link>
       </div>
 
       {/* ── Stat Cards ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+      <div className="stat-grid">
         {statCards.map((s, i) => (
-          <div key={i} className={`bg-gradient-to-br ${s.bg} rounded-xl p-4 text-center border ${s.border}`}>
-            <div className="text-xl mb-1">{s.icon}</div>
-            <div className={`text-2xl font-bold ${s.color}`}>{s.val}</div>
-            <div className="text-gray-400 tex-xs mt-0.5">{s.label}</div>
+          <div key={i} className={`bg-gradient-to-br ${s.bg} stat-glass-card border ${s.border}`}>
+            <div className="text-xl sm:text-2xl shrink-0">{s.icon}</div>
+            <div className="min-w-0">
+              <div className={`text-lg sm:text-xl font-bold leading-tight ${s.color}`}>{s.val}</div>
+              <div className="text-xs mt-0.5 truncate" style={{color:'var(--text-secondary)'}}>{s.label}</div>
+            </div>
           </div>
         ))}
       </div>
 
       {/* ── Charts Row ── */}
       {submissions.length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-5">
-          <div className="lg:col-span-2 bg-gray-800/50 border border-slate-700/20 rounded-2xl p-4">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">📈 Performance History</p>
-            <div style={{ height: 200 }}>
-              <Line data={lineData} options={chartBase} />
-            </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+          <div className="lg:col-span-2 p-3 sm:p-4 border" style={{borderRadius:'4px',background:'var(--bg-card)',borderColor:'var(--border)'}}>
+            <p className="text-xs font-semibold uppercase tracking-wide mb-3" style={{color:'var(--text-muted)'}}>📈 Performance History</p>
+            <div style={{ height: 180 }}><Line data={lineData} options={chartBase} /></div>
           </div>
-          <div className="bg-gray-800/50 border border-slate-700/20 rounded-2xl p-4 flex flex-col">
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3">🎯 Result Breakdown</p>
-            <div style={{ height: 200 }} className="flex items-center justify-center">
-              <Doughnut data={doughnutData} options={{
-                responsive: true, maintainAspectRatio: false,
-                plugins: { legend: { position: 'bottom', labels: { color: '#9ca3af', font: { size: 10 } } } },
-              }} />
+          <div className="p-3 sm:p-4 flex flex-col border" style={{borderRadius:'4px',background:'var(--bg-card)',borderColor:'var(--border)'}}>
+            <p className="text-xs font-semibold uppercase tracking-wide mb-3" style={{color:'var(--text-muted)'}}>🎯 Result Breakdown</p>
+            <div style={{ height: 180 }} className="flex items-center justify-center">
+              <Doughnut data={doughnutData} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { color: '#9ca3af', font: { size: 10 } } } } }} />
             </div>
           </div>
         </div>
       )}
 
       {/* ── Mobile Results Button ── */}
-      <div className="sm:hidden mb-4">
-        <button
-          onClick={() => setShowAllResults(true)}
-          className="w-full py-3 bg-gray-800/50 border border-slate-700/20 rounded-xl text-sm font-semibold text-gray-300 hover:bg-gray-800 transition-colors"
-        >
+      <div className="sm:hidden">
+        <button onClick={() => setShowAllResults(true)}
+          className="w-full py-3 text-sm font-semibold transition-colors border focus:outline-none focus:ring-2 focus:ring-blue-500"
+          style={{borderRadius:'4px',background:'var(--bg-card)',borderColor:'var(--border)',color:'var(--text-primary)'}}>
           📋 View All Results ({submissions.length})
         </button>
       </div>
 
       {/* ── Recent Results (inline) ── */}
-      <div className="bg-gray-800/50 border border-slate-700/20 rounded-2xl p-5">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="font-semibold text-white text-sm">📋 Recent Results</h3>
+      <div className="flex flex-col flex-1 border p-3 sm:p-4 lg:p-5" style={{borderRadius:'4px',background:'var(--bg-card)',borderColor:'var(--border)'}}>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-semibold text-sm sm:text-base" style={{color:'var(--text-primary)'}}>📋 Recent Results</h3>
           <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-500">{submissions.length} total</span>
+            <span className="text-xs" style={{color:'var(--text-muted)'}}>{submissions.length} total</span>
             {submissions.length > 5 && (
-              <button onClick={() => setShowAllResults(true)} className="text-xs text-blue-400 hover:underline">
-                View all →
-              </button>
+              <button onClick={() => setShowAllResults(true)} className="text-xs text-blue-400 hover:underline">View all →</button>
             )}
           </div>
         </div>
         {loading ? (
-          <div className="text-center py-6 text-gray-400 text-sm">
+          <div className="text-center py-6 text-sm" style={{color:'var(--text-muted)'}}>
             <div className="text-2xl mb-2 animate-pulse">⏳</div>Loading...
           </div>
         ) : submissions.length === 0 ? (
           <div className="text-center py-8">
             <p className="text-4xl mb-2">📭</p>
-            <p className="text-gray-400 text-sm">No exams taken yet.</p>
+            <p className="text-sm" style={{color:'var(--text-secondary)'}}>No exams taken yet.</p>
             <Link to="/student/assessments" className="text-blue-400 text-sm hover:underline mt-1 inline-block">Browse available exams →</Link>
           </div>
         ) : (
@@ -414,16 +405,12 @@ const StudentDashboard = () => {
             {submissions.slice(0, 5).map(s => {
               const id = s.id || s._id;
               return (
-                <ResultItem
-                  key={id}
-                  sub={s}
-                  isOpen={openResultId === id}
-                  onToggle={() => setOpenResultId(openResultId === id ? null : id)}
-                />
+                <ResultItem key={id} sub={s} isOpen={openResultId === id} onToggle={() => setOpenResultId(openResultId === id ? null : id)} />
               );
             })}
           </div>
         )}
+      </div>
       </div>
     </DashboardLayout>
   );

@@ -14,120 +14,110 @@ import DashboardLayout from "../../components/DashboardLayout";
 
 const AUTO_REFRESH = 15000;
 
-/* ── Heuristic: detect likely-active browser extension ─────────── */
-const detectExtensions = () => {
-  // 1. Check for injected extension DOM markers (common pattern)
-  const injectedEls = document.querySelectorAll(
-    '[id^="chrome-extension"], [class*="extension"], [data-extension]'
-  );
-  if (injectedEls.length > 0) return true;
-
-  // 2. Check navigator.plugins — most browsers have ≤10 native plugins;
-  //    extensions often register additional plugin entries
-  if (navigator.plugins && navigator.plugins.length > 12) return true;
-
-  // 3. Check if browser-specific extension APIs are accessible (Chromium)
-  if (typeof window.chrome !== "undefined" && window.chrome?.runtime) {
-    // Extension APIs exposed = at least one extension is active
-    // (Note: some browsers expose chrome object even without extensions)
-    return false; // Can't reliably tell from page context
-  }
-
-  return false;
+/* ── DevTools detection ───────────────────────────────────────────── */
+const useDevToolsDetection = () => {
+  const [isOpen, setIsOpen] = useState(false);
+  useEffect(() => {
+    const threshold = 160;
+    const check = () => {
+      const widthDiff  = window.outerWidth  - window.innerWidth  > threshold;
+      const heightDiff = window.outerHeight - window.innerHeight > threshold;
+      setIsOpen(widthDiff || heightDiff);
+    };
+    check();
+    window.addEventListener("resize", check);
+    const interval = setInterval(check, 1500);
+    return () => { window.removeEventListener("resize", check); clearInterval(interval); };
+  }, []);
+  return isOpen;
 };
 
-/* ── Extension Check Row ─────────────────────────────────────────── */
+/* ── Attempt to close DevTools (request fullscreen to force focus) ── */
+const tryCloseDevTools = async () => {
+  try {
+    const el = document.documentElement;
+    await (el.requestFullscreen || el.webkitRequestFullscreen || el.mozRequestFullScreen)?.call(el);
+  } catch {}
+  // Pressing F12 programmatically is blocked by browsers — instruct user instead
+};
+
+/* ── Detect injected extension elements ───────────────────────────── */
+const detectExtensions = () => {
+  const injected = document.querySelectorAll('[id^="chrome-extension"], [class*="extension"], [data-extension]');
+  return injected.length > 0 || (navigator.plugins && navigator.plugins.length > 12);
+};
+
+/* ── Security Checklist Row ───────────────────────────────────────── */
+const ChecklistRow = ({ icon, label, sublabel, checked, warning, children }) => (
+  <div className={`rounded-[4px] border transition-all duration-200 ${
+    checked ? "bg-green-900/20 border-green-700/40" : warning ? "bg-red-900/15 border-red-700/40" : "bg-gray-800/40 border-slate-700/30"
+  }`}>
+    <div className="flex items-start gap-3 px-4 py-3">
+      <span className="text-lg shrink-0 mt-0.5">{checked ? "✅" : warning ? "❌" : icon}</span>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-white">{label}</p>
+        {sublabel && <p className="text-xs text-gray-400 mt-0.5">{sublabel}</p>}
+      </div>
+    </div>
+    {children}
+  </div>
+);
+
+/* ── Extension Checkbox Panel ─────────────────────────────────────── */
 const ExtensionCheckRow = ({ confirmed, onConfirm }) => {
-  const [showing, setShowing] = useState(false);
-  const extensionsSuspected = detectExtensions();
+  const [showHow, setShowHow] = useState(false);
+  const suspected = detectExtensions();
 
   return (
-    <div
-      className={`rounded-xl border transition-all duration-300
-        ${confirmed
-          ? "bg-green-900/20 border-green-700/40"
-          : "bg-amber-900/15 border-amber-700/40"
-        }`}
+    <ChecklistRow
+      icon="🧩"
+      label="Browser Extensions Disabled"
+      sublabel={confirmed ? "Extensions confirmed disabled — you're good to go." : "All extensions must be disabled before and during the exam."}
+      checked={confirmed}
+      warning={suspected && !confirmed}
     >
-      <div className="flex items-start gap-3 px-4 py-3">
-        {/* Status icon */}
-        <span className="text-lg shrink-0 mt-0.5">
-          {confirmed ? "✅" : "🧩"}
-        </span>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-semibold text-white leading-tight">
-            Browser Extensions
-          </p>
-          <p className="text-xs text-gray-400 mt-0.5">
-            {confirmed
-              ? "Extensions confirmed disabled — you're good to go."
-              : "All browser extensions must be disabled during the exam."}
-          </p>
-          {extensionsSuspected && !confirmed && (
-            <p className="text-xs text-amber-300 mt-1 flex items-center gap-1">
-              <span>⚠️</span> We detected possible extensions — please disable them now.
+      {!confirmed && (
+        <div className="px-4 pb-4 space-y-3">
+          {suspected && (
+            <p className="text-xs text-amber-300 flex items-center gap-1.5">
+              <span>⚠️</span> Possible extensions detected — please disable them first.
             </p>
           )}
-        </div>
-        {!confirmed && (
-          <button
-            onClick={() => setShowing((s) => !s)}
-            className="shrink-0 text-xs text-blue-400 hover:text-blue-300 underline decoration-dotted"
-          >
-            How?
-          </button>
-        )}
-      </div>
 
-      {/* How-to instructions panel */}
-      {showing && !confirmed && (
-        <div className="mx-4 mb-3 bg-black/30 rounded-xl p-3 border border-white/8">
-          <p className="text-xs font-semibold text-white mb-2">
-            How to disable extensions:
-          </p>
-          <ol className="text-xs text-gray-300 space-y-1.5 list-none">
-            <li className="flex items-start gap-2">
-              <span className="bg-blue-600/30 text-blue-300 rounded-full w-4 h-4 shrink-0 flex items-center justify-center text-[10px] font-bold mt-0.5">1</span>
-              <span>
-                <strong className="text-white">Chrome / Edge:</strong> Address bar → paste{" "}
-                <code className="bg-white/10 px-1 rounded text-blue-300 text-[10px]">chrome://extensions</code>
-                {" "}→ toggle off all extensions.
-              </span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="bg-blue-600/30 text-blue-300 rounded-full w-4 h-4 shrink-0 flex items-center justify-center text-[10px] font-bold mt-0.5">2</span>
-              <span>
-                <strong className="text-white">Firefox:</strong> Address bar → paste{" "}
-                <code className="bg-white/10 px-1 rounded text-blue-300 text-[10px]">about:addons</code>
-                {" "}→ disable each extension.
-              </span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="bg-purple-600/30 text-purple-300 rounded-full w-4 h-4 shrink-0 flex items-center justify-center text-[10px] font-bold mt-0.5">✦</span>
-              <span>
-                <strong className="text-white">Fastest method:</strong> Open a new{" "}
-                <span className="text-purple-300 font-semibold">Incognito / Private window</span>{" "}
-                (Ctrl+Shift+N) — extensions are disabled by default — then navigate back to the exam.
-              </span>
-            </li>
-          </ol>
+          {/* Checkbox confirmation */}
+          <label className="flex items-start gap-3 cursor-pointer group">
+            <div className="relative mt-0.5">
+              <input type="checkbox" className="sr-only peer" checked={confirmed} onChange={onConfirm}/>
+              <div className="w-5 h-5 rounded-[4px] border-2 border-gray-600 bg-gray-800 peer-checked:bg-blue-600 peer-checked:border-blue-600 transition-all flex items-center justify-center">
+                <svg className="w-3 h-3 text-white opacity-0 peer-checked:opacity-100 group-has-[input:checked]:opacity-100" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7"/>
+                </svg>
+              </div>
+            </div>
+            <span className="text-sm text-gray-300 leading-snug">
+              I confirm that I have <strong className="text-white">disabled all browser extensions</strong> and they will remain off for the entire exam duration.
+            </span>
+          </label>
+
+          <button onClick={onConfirm}
+            className="w-full py-2.5 rounded-[4px] text-sm font-semibold bg-amber-600/80 hover:bg-amber-500 text-white border border-amber-500/40 transition-all active:scale-[0.98]">
+            ✅ I've Disabled All Extensions
+          </button>
+
+          <button onClick={() => setShowHow(s => !s)} className="w-full text-xs text-blue-400 hover:text-blue-300 underline-offset-2 underline decoration-dotted">
+            {showHow ? "Hide" : "How to disable extensions →"}
+          </button>
+
+          {showHow && (
+            <div className="bg-black/30 rounded-[4px] p-3 border border-white/8 text-xs text-gray-300 space-y-2">
+              <p><strong className="text-white">Chrome/Edge:</strong> Paste <code className="bg-white/10 px-1 rounded text-blue-300">chrome://extensions</code> → toggle off all</p>
+              <p><strong className="text-white">Firefox:</strong> Paste <code className="bg-white/10 px-1 rounded text-blue-300">about:addons</code> → disable each</p>
+              <p><strong className="text-purple-300">Fastest:</strong> Open <strong>Incognito window</strong> (Ctrl+Shift+N) — extensions off by default</p>
+            </div>
+          )}
         </div>
       )}
-
-      {/* Confirm button */}
-      {!confirmed && (
-        <div className="px-4 pb-3">
-          <button
-            onClick={onConfirm}
-            className="w-full py-2.5 rounded-xl text-sm font-semibold transition-all
-              bg-amber-600/80 hover:bg-amber-500 text-white border border-amber-500/40
-              hover:shadow-lg hover:shadow-amber-900/30 active:scale-[0.98]"
-          >
-            ✅ I've disabled all extensions
-          </button>
-        </div>
-      )}
-    </div>
+    </ChecklistRow>
   );
 };
 
@@ -136,11 +126,12 @@ const PermissionModal = ({ exam, onConfirm, onClose }) => {
   const proctoring      = exam?.proctoring || {};
   const activeProctors  = getActiveProctors(proctoring);
   const { needsCam, needsMic, needsFullscreen } = getRequiredPermissions(proctoring);
+  const devToolsOpen = useDevToolsDetection();
 
   const [camStatus,  setCamStatus]  = useState(needsCam       ? "pending" : "skip");
   const [micStatus,  setMicStatus]  = useState(needsMic       ? "pending" : "skip");
   const [fsStatus,   setFsStatus]   = useState(needsFullscreen ? "pending" : "skip");
-  const [extConfirmed, setExtConfirmed] = useState(false);  // ← NEW: extension gate
+  const [extConfirmed, setExtConfirmed] = useState(false);
   const [requesting, setRequesting] = useState(false);
 
   const permissionsGranted =
@@ -148,8 +139,8 @@ const PermissionModal = ({ exam, onConfirm, onClose }) => {
     (micStatus === "granted" || micStatus === "skip") &&
     (fsStatus  === "granted" || fsStatus  === "skip");
 
-  // ALL gates must pass (including extension confirmation)
-  const allGranted = permissionsGranted && extConfirmed;
+  // ALL gates must pass
+  const allGranted = permissionsGranted && extConfirmed && !devToolsOpen;
   const anyDenied  = camStatus === "denied" || micStatus === "denied";
 
   const requestMediaPermissions = useCallback(async () => {
@@ -332,7 +323,31 @@ const PermissionModal = ({ exam, onConfirm, onClose }) => {
             </div>
           )}
 
-          {/* ── Extension Disable Step — always shown, every exam ── */}
+          {/* ── DevTools Check ── */}
+          <ChecklistRow
+            icon="🔍"
+            label="Developer Tools Closed"
+            sublabel={devToolsOpen ? "DevTools is open — please close it before starting." : "DevTools / Inspect mode is not detected."}
+            checked={!devToolsOpen}
+            warning={devToolsOpen}
+          >
+            {devToolsOpen && (
+              <div className="px-4 pb-3 space-y-2">
+                <p className="text-xs text-red-300">Close DevTools using one of these methods:</p>
+                <div className="bg-black/30 rounded-[4px] p-2.5 border border-white/8 text-xs text-gray-300 space-y-1">
+                  <p>• Press <kbd className="bg-white/10 px-1 rounded">F12</kbd> to toggle DevTools</p>
+                  <p>• Press <kbd className="bg-white/10 px-1 rounded">Ctrl+Shift+I</kbd> (or Cmd+Option+I on Mac)</p>
+                  <p>• Right-click → "Close DevTools" if panel is docked</p>
+                </div>
+                <button onClick={tryCloseDevTools}
+                  className="w-full py-2 text-xs font-semibold bg-red-700 hover:bg-red-600 rounded-[4px] transition-colors">
+                  🔒 Try Auto-Close DevTools
+                </button>
+              </div>
+            )}
+          </ChecklistRow>
+
+          {/* ── Extension Disable Step ── */}
           <ExtensionCheckRow
             confirmed={extConfirmed}
             onConfirm={() => setExtConfirmed(true)}
@@ -340,23 +355,19 @@ const PermissionModal = ({ exam, onConfirm, onClose }) => {
 
           {/* Action buttons */}
           <div className="flex gap-3 pt-1">
-            <button
-              onClick={onClose}
-              className="flex-1 py-3 bg-white/6 hover:bg-white/10 rounded-xl text-sm font-medium
-                transition-all border border-white/8 hover:border-white/15"
-            >
+            <button onClick={onClose}
+              className="flex-1 py-3 bg-white/6 hover:bg-white/10 rounded-[4px] text-sm font-medium transition-all border border-white/8">
               Cancel
             </button>
             <button
               onClick={() => allGranted && onConfirm(exam)}
               disabled={!allGranted}
-              className={`flex-1 py-3 rounded-xl text-sm font-bold transition-all
-                ${allGranted
+              className={`flex-1 py-3 rounded-[4px] text-sm font-bold transition-all ${
+                allGranted
                   ? "bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 text-white shadow-lg shadow-green-900/30 active:scale-[0.98]"
                   : "bg-gray-700/60 text-gray-500 cursor-not-allowed border border-white/8"
-                }`}
-            >
-              {allGranted ? "🚀 Start Exam" : !extConfirmed ? "🧩 Confirm Extensions First" : "⏳ Waiting…"}
+              }`}>
+              {allGranted ? "🚀 Start Exam" : devToolsOpen ? "🔍 Close DevTools First" : !extConfirmed ? "🧩 Confirm Extensions First" : "⏳ Waiting…"}
             </button>
           </div>
         </div>

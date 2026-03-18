@@ -1,5 +1,5 @@
 // frontend/src/pages/faculty/QuestionBank.jsx
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import DashboardLayout from "../../components/DashboardLayout";
 import api from "../../services/api";
@@ -152,6 +152,59 @@ const PaperDrawer = ({
   const [showQForm, setShowQForm] = useState(false);
   const [editingIdx, setEditingIdx] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [importing, setImporting] = useState(false);
+
+  const handleImportFile = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const allowed = ['application/pdf','image/png','image/jpeg','image/jpg','image/webp',
+                     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                     'application/msword'];
+    // also allow by extension since some OSes report wrong MIME
+    const ext = file.name.split('.').pop().toLowerCase();
+    const allowedExt = ['pdf','png','jpg','jpeg','webp','docx','doc'];
+    if (!allowed.includes(file.type) && !allowedExt.includes(ext)) {
+      toast.error('Supported: PDF, DOCX, PNG, JPG, WEBP', { className: 'custom-toast', bodyClassName: 'custom-toast-body' });
+      return;
+    }
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error('File is too large. Maximum size is 20 MB', { className: 'custom-toast', bodyClassName: 'custom-toast-body' });
+      return;
+    }
+    setImporting(true);
+    try {
+      const base64 = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const mediaType = ext === 'docx'
+        ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        : ext === 'doc' ? 'application/msword'
+        : ext === 'jpg' ? 'image/jpeg'
+        : file.type || 'application/octet-stream';
+      const { data } = await api.post('/faculty/import-questions', {
+        fileBase64: base64,
+        mediaType,
+        fileName: file.name,
+      });
+      if (!data.questions || data.questions.length === 0) {
+        toast.warning('No questions found in this file', { className: 'custom-toast', bodyClassName: 'custom-toast-body' });
+        return;
+      }
+      setQuestions(prev => [...prev, ...data.questions]);
+      toast.success(`✅ Imported ${data.count} question${data.count !== 1 ? 's' : ''} successfully!`, {
+        className: 'custom-toast', bodyClassName: 'custom-toast-body',
+      });
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Import failed. Please try again.';
+      toast.error(msg, { className: 'custom-toast', bodyClassName: 'custom-toast-body' });
+    } finally {
+      setImporting(false);
+      e.target.value = '';
+    }
+  };
 
   const handleSave = async () => {
     if (!title.trim()) {
@@ -309,19 +362,37 @@ const PaperDrawer = ({
                   <h4 className="text-sm font-semibold text-white">
                     Questions ({questions.length})
                   </h4>
-                  <button
-                    onClick={() => {
-                      setEditingIdx(null);
-                      setShowQForm((v) => !v);
-                    }}
-                    className="text-xs px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors"
-                  >
-                    {showQForm ? "✕ Cancel" : "+ Add"}
-                  </button>
+                  <div className="flex gap-1.5 items-center">
+                    {/* Import from PDF / Image */}
+                    <label className={`text-xs px-2.5 py-1.5 rounded-lg transition-colors cursor-pointer ${
+                      importing
+                        ? 'bg-gray-700 text-gray-500 cursor-not-allowed pointer-events-none'
+                        : 'bg-purple-700 hover:bg-purple-600 text-white'
+                    }`}>
+                      {importing ? '⏳…' : '📥 Import'}
+                      <input
+                        type="file"
+                        accept=".pdf,.docx,.doc,.png,.jpg,.jpeg,.webp"
+                        className="hidden"
+                        disabled={importing}
+                        onChange={handleImportFile}
+                      />
+                    </label>
+                    {/* Add Question */}
+                    <button
+                      onClick={() => {
+                        setEditingIdx(null);
+                        setShowQForm((v) => !v);
+                      }}
+                      className="text-xs px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors"
+                    >
+                      {showQForm ? '✕ Cancel' : '+ Add'}
+                    </button>
+                  </div>
                 </div>
                 {showQForm && (
                   <QuestionForm
-                    q={null}
+                    q={editingIdx !== null ? questions[editingIdx] : null}
                     idx={editingIdx}
                     onSave={(q) => {
                       if (editingIdx !== null)
@@ -449,11 +520,33 @@ const QuestionBank = () => {
   const navigate = useNavigate();
   const isSelectMode = location.state?.selectMode === true;
 
+  const newPaperRef = useRef({});
+  const [highlightId, setHighlightId] = useState(null);
   const [papers, setPapers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [drawerPaper, setDrawerPaper] = useState(undefined); // undefined=closed, null=new, obj=open
   const [searchTitle, setSearchTitle] = useState("");
   const [searchDate, setSearchDate] = useState("");
+
+  // Highlight newly imported paper coming from ImportPage
+  useEffect(() => {
+    const nid = location.state?.newPaperId;
+    if (nid) {
+      setHighlightId(nid);
+      // Clear highlight after animation
+      const t = setTimeout(() => setHighlightId(null), 3000);
+      // Replace state so re-visits don't re-highlight
+      window.history.replaceState({}, "");
+      return () => clearTimeout(t);
+    }
+  }, [location.state]);
+
+  // Scroll to highlighted card after papers load
+  useEffect(() => {
+    if (highlightId && newPaperRef.current[highlightId]) {
+      newPaperRef.current[highlightId].scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [highlightId, papers]);
 
   const loadPapers = async () => {
     setLoading(true);
@@ -530,12 +623,20 @@ const QuestionBank = () => {
   };
 
   const headerActions = !isSelectMode && (
-    <button
-      onClick={() => setDrawerPaper(null)}
-      className="text-xs px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded-lg font-medium text-white transition-colors"
-    >
-      + New Paper
-    </button>
+    <div className="flex gap-2">
+      <button
+        onClick={() => navigate("/faculty/import-questions")}
+        className="text-xs px-3 py-1.5 bg-purple-700 hover:bg-purple-600 rounded-lg font-medium text-white transition-colors"
+      >
+        ⬆ Import
+      </button>
+      <button
+        onClick={() => setDrawerPaper(null)}
+        className="text-xs px-3 py-1.5 bg-blue-600 hover:bg-blue-500 rounded-lg font-medium text-white transition-colors"
+      >
+        + New Paper
+      </button>
+    </div>
   );
 
   return (
@@ -599,7 +700,12 @@ const QuestionBank = () => {
           {filteredPapers.map((paper) => (
             <div
               key={paper.id}
-              className={`bg-gray-800/50 border border-slate-700/20 rounded-2xl p-4 transition-all hover:-translate-y-0.5 hover:border-blue-600/30 ${isSelectMode ? "cursor-pointer" : ""}`}
+              ref={(el) => { newPaperRef.current[paper.id] = el; }}
+              className={`border rounded-2xl p-4 transition-all hover:-translate-y-0.5 hover:border-blue-600/30 ${isSelectMode ? "cursor-pointer" : ""} ${
+                highlightId === paper.id
+                  ? "bg-blue-900/30 border-blue-500/60 shadow-[0_0_20px_rgba(59,130,246,0.25)] animate-pulse"
+                  : "bg-gray-800/50 border-slate-700/20"
+              }`}
               onClick={isSelectMode ? () => setDrawerPaper(paper) : undefined}
             >
               <div className="flex items-start justify-between gap-2 mb-3">

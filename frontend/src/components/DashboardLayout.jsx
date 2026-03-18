@@ -93,27 +93,16 @@ const NavItem = ({ to, icon, label, collapsed, onClick }) => {
       to={to}
       onClick={onClick}
       title={collapsed ? label : undefined}
-      className={`nav-sidebar-item relative flex items-center gap-3 rounded-xl mx-2 mb-1
-        text-sm font-medium overflow-hidden group
-        ${collapsed ? "px-0 py-3 justify-center" : "px-3 py-2.5"}
+      className={`nav-sidebar-item flex items-center gap-3 mx-2 mb-0.5
+        text-sm font-medium overflow-hidden
+        ${collapsed ? "px-0 py-3 justify-center" : "px-3 py-2"}
         ${isActive ? "nav-sidebar-active" : "nav-sidebar-idle"}`}
     >
-      {/* Left accent bar — active only */}
-      <span
-        className={`absolute left-0 top-1.5 bottom-1.5 rounded-r-full transition-all duration-300
-          ${isActive ? "w-[3px] opacity-100" : "w-0 opacity-0"}`}
-        style={{ background: 'var(--accent, #3b82f6)' }}
-      />
-      {/* Icon */}
-      <span
-        className={`shrink-0 text-base transition-all duration-200
-          ${isActive ? "scale-110" : "group-hover:scale-110 group-hover:rotate-3"}`}
-      >
-        {icon}
-      </span>
+      {/* Icon — no animation */}
+      <span className="shrink-0 text-base">{icon}</span>
       {/* Label */}
       {!collapsed && (
-        <span className="truncate leading-tight transition-all duration-200">{label}</span>
+        <span className="truncate leading-tight">{label}</span>
       )}
     </Link>
   );
@@ -334,7 +323,7 @@ const DashboardLayout = ({ children, title, actions }) => {
         </header>
 
         {/* Content */}
-        <main className="dashboard-content">{children}</main>
+        <main className="dashboard-content flex flex-col">{children}</main>
 
         {/* Mobile Bottom Nav — ICONS ONLY */}
         <nav className="md:hidden flex shrink-0 relative" style={{ background: 'var(--bg-sidebar, #0d1117)' }}>

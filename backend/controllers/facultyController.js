@@ -346,3 +346,217 @@ exports.deletePaper = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+// ── Import Questions from PDF / Image / DOCX ──────────────────────────────────
+
+/**
+ * MCQ parser — LINE-BY-LINE STATE MACHINE
+ * Fixes: last question skip, inline options, OCR noise
+ *
+ * Accepted question headers: Q1.  Q1)  1.  1)  Question 1.
+ * Accepted option headers:   A.  a)  (A)  A:  a-
+ * Accepted answer lines:     Answer: B  Ans: B  Correct: B  Key: B  checkmark B
+ */
+function parseMCQText(rawText) {
+  const lines = rawText
+    .replace(/\r\n/g, '\n')
+    .replace(/\f/g, '\n')
+    .split('\n');
+
+  const Q_RE   = /^(?:Q(?:uestion)?\s*\d+\s*[\.\):\-]\s*|\d+\s*[\.\):\-]\s*)/i;
+  const OPT_RE = /^\s*(?:\(([A-Da-d])\)|([A-Da-d])\s*[\.\)\-:])\s*(.+)/;
+  const ANS_RE = /(?:correct\s+answer|correct|answer|ans|key|sol(?:ution)?)\s*[:\-\u2013=]\s*([A-D])/i;
+  const DIFF_RE= /(?:difficulty|diff|level)\s*[:\-\u2013=]\s*(easy|medium|hard)/i;
+  const MRK_RE = /(?:marks?\s*[:\-\u2013=]|points?\s*[:\-\u2013=])\s*(\d+)/i;
+  const TICK_RE= /[\u2713\u2714]\s*([A-D])/;
+
+  const questions = [];
+
+  function flush(q) {
+    if (!q) return;
+    const hasOpts = q.opts.A || q.opts.B || q.opts.C || q.opts.D;
+    if (!hasOpts || !q.text) return;
+    if (!['A','B','C','D'].includes(q.answer)) q.answer = 'A';
+    questions.push({
+      id: `imp_${Date.now()}_${questions.length}_${Math.random().toString(36).slice(2,7)}`,
+      text: q.text,
+      options: ['A','B','C','D'].map(id => ({ id, text: q.opts[id] || '' })),
+      answer: q.answer,
+      marks: q.marks,
+      difficulty: q.difficulty,
+    });
+  }
+
+  let cur = null;
+
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line) continue;
+
+    // New question header
+    if (Q_RE.test(line)) {
+      flush(cur);
+      const qText = line.replace(Q_RE, '').trim();
+      cur = { text: qText, opts: { A:'', B:'', C:'', D:'' }, answer: '', marks: 1, difficulty: 'medium' };
+
+      // Detect inline options on same line: "What is X? A) foo B) bar C) baz D) qux"
+      const firstOptPos = qText.search(/\b[A-Da-d]\s*[\.\)\-:]/);
+      if (firstOptPos > 5) {
+        const inlineOpts = [...qText.matchAll(/\b([A-Da-d])\s*[\.\)\-:]\s*(.+?)(?=\s+\b[A-Da-d]\s*[\.\)\-:]|$)/gi)];
+        if (inlineOpts.length >= 2) {
+          cur.text = qText.slice(0, firstOptPos).trim();
+          for (const m of inlineOpts) {
+            const id = m[1].toUpperCase();
+            if (['A','B','C','D'].includes(id)) cur.opts[id] = m[2].trim();
+          }
+        }
+      }
+      continue;
+    }
+
+    if (!cur) continue;
+
+    // Option line
+    const optM = line.match(OPT_RE);
+    if (optM) {
+      const id  = (optM[1] || optM[2]).toUpperCase();
+      let   val = optM[3].trim();
+      const hasTick = /[\u2713\u2714]/.test(val) || /\(correct\)/i.test(val);
+      val = val.replace(/[\u2713\u2714]/g,'').replace(/\(correct\)/gi,'').trim();
+      if (['A','B','C','D'].includes(id)) {
+        cur.opts[id] = val;
+        if (hasTick && !cur.answer) cur.answer = id;
+      }
+      continue;
+    }
+
+    // Answer line
+    const ansM = line.match(ANS_RE);
+    if (ansM) { cur.answer = ansM[1].toUpperCase(); continue; }
+
+    // Tick-only answer
+    const tickM = line.match(TICK_RE);
+    if (tickM && !cur.answer) { cur.answer = tickM[1].toUpperCase(); continue; }
+
+    // Difficulty
+    const diffM = line.match(DIFF_RE);
+    if (diffM) { cur.difficulty = diffM[1].toLowerCase(); continue; }
+
+    // Marks
+    const mrkM = line.match(MRK_RE);
+    if (mrkM) { cur.marks = Math.max(1, parseInt(mrkM[1], 10) || 1); continue; }
+
+    // Multi-line question text continuation (only if no options collected yet)
+    const noOpts = !cur.opts.A && !cur.opts.B && !cur.opts.C && !cur.opts.D;
+    if (noOpts && !/^(page|section|part|www\.|http|\d+\s*\/\s*\d+)/i.test(line)) {
+      cur.text += ' ' + line;
+    }
+  }
+
+  flush(cur); // flush the LAST question — this was the bug
+  return questions;
+}
+
+/** Extract text from DOCX buffer */
+async function extractDocxText(buffer) {
+  const mammoth = require('mammoth');
+  const result  = await mammoth.extractRawText({ buffer });
+  return result.value || '';
+}
+
+/** OCR an image/PDF buffer using tesseract.js */
+async function ocrBuffer(buffer) {
+  const { createWorker } = require('tesseract.js');
+  const worker = await createWorker('eng');
+  try {
+    const { data } = await worker.recognize(buffer);
+    return data.text || '';
+  } finally {
+    await worker.terminate();
+  }
+}
+
+// ── Import Questions from PDF / Image / DOCX ─────────────────────────────────
+exports.importQuestionsFromFile = async (req, res) => {
+  try {
+    const { fileBase64, mediaType, fileName } = req.body;
+    if (!fileBase64 || !mediaType) {
+      return res.status(400).json({ message: 'fileBase64 and mediaType are required' });
+    }
+
+    const buffer = Buffer.from(fileBase64, 'base64');
+    const ext    = (fileName || '').split('.').pop().toLowerCase();
+    let rawText  = '';
+
+    // DOCX / DOC
+    if (ext === 'docx' || ext === 'doc' ||
+        mediaType.includes('wordprocessingml') || mediaType.includes('msword')) {
+      try {
+        rawText = await extractDocxText(buffer);
+      } catch (e) {
+        return res.status(422).json({ message: 'Could not read this Word document. Please save as .docx and try again.' });
+      }
+
+    // PDF — text extraction via pdf-parse (digital PDFs only)
+    } else if (mediaType === 'application/pdf') {
+      const pdfParse = require('pdf-parse');
+      try {
+        const data = await pdfParse(buffer);
+        rawText = data.text || '';
+      } catch (pdfErr) {
+        console.warn('[import] pdf-parse failed:', pdfErr.message);
+        // NOTE: tesseract.js cannot read raw PDF bytes — it only handles images.
+        // Tell the user to convert the PDF page to an image instead.
+        return res.status(422).json({
+          message:
+            'This PDF could not be read (it may be corrupt or use an unsupported format). ' +
+            'Please take a screenshot of the PDF page and upload it as a PNG or JPG image instead.',
+        });
+      }
+
+      // pdf-parse succeeded but got no text (e.g. scanned/image-only PDF)
+      if (!rawText.trim()) {
+        return res.status(422).json({
+          message:
+            'This PDF appears to be a scanned/image-only PDF — no text could be extracted. ' +
+            'Please take a screenshot of the page and upload it as a PNG or JPG image instead.',
+        });
+      }
+
+    // Image → OCR
+    } else {
+      try { rawText = await ocrBuffer(buffer); } catch (e) {
+        return res.status(422).json({ message: 'OCR failed. Use a clear printed image (PNG/JPG).' });
+      }
+    }
+
+    if (!rawText || !rawText.trim()) {
+      return res.status(422).json({
+        message: 'No readable text found in file. ' +
+          (mediaType === 'application/pdf'
+            ? 'PDF may be password-protected. Try a PNG/JPG screenshot instead.'
+            : 'For images, use a clear high-contrast scan with printed text.'),
+      });
+    }
+
+    console.log('[import] Extracted text preview:\n', rawText.slice(0, 500));
+
+    const questions = parseMCQText(rawText);
+
+    if (questions.length === 0) {
+      return res.status(422).json({
+        message:
+          'Text was extracted but no MCQ questions detected.\n' +
+          'Expected format:\n  Q1. Question text\n  A) option\n  B) option\n  Answer: A\n\n' +
+          'Extracted text preview:\n' + rawText.slice(0, 600),
+      });
+    }
+
+
+    res.json({ questions, count: questions.length });
+  } catch (err) {
+    console.error('importQuestionsFromFile error:', err);
+    res.status(500).json({ message: err.message || 'Import failed' });
+  }
+};
+

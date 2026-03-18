@@ -176,48 +176,56 @@ const FacultyDashboard = () => {
 
   return (
     <DashboardLayout title="Faculty Dashboard" actions={header}>
+      <div className="page-wrapper">
 
       {/* Welcome */}
-      <div className="bg-gradient-to-r from-purple-900/35 to-blue-900/25 border border-purple-800/20 rounded-2xl p-5 mb-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+      <div className="p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border"
+        style={{borderRadius:'4px',background:'var(--bg-card)',borderColor:'var(--border)'}}>
         <div>
-          <h2 className="text-lg font-bold text-white">Welcome, {user?.name?.split(" ")[0]}! 👋</h2>
-          <p className="text-purple-200 text-sm mt-0.5">Manage your exams, questions, and monitor students</p>
+          <h2 className="text-base sm:text-lg lg:text-xl font-bold" style={{color:'var(--text-primary)'}}>Welcome, {user?.name?.split(" ")[0]}! 👋</h2>
+          <p className="text-xs sm:text-sm mt-0.5" style={{color:'var(--text-secondary)'}}>Manage your exams, questions, and monitor students</p>
         </div>
         <div className="flex gap-2">
           <Link to="/faculty/exam-config"
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 rounded-xl text-sm font-semibold transition-all">
+            className="px-3 py-2 sm:px-4 sm:py-2.5 bg-blue-600 hover:bg-blue-500 text-sm font-semibold transition-all focus:outline-none focus:ring-2 focus:ring-blue-500"
+            style={{borderRadius:'4px'}}>
             ⚙️ New Exam
           </Link>
         </div>
       </div>
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+
+      {/* Stat Cards — horizontal glass, not square */}
+      <div className="stat-grid">
         {statCards.map((s, i) => (
-          <div key={i} className={`bg-gradient-to-br ${s.bg} rounded-xl p-4 text-center border ${s.border}`}>
-            <div className="text-xl mb-1">{s.icon}</div>
-            <div className={`text-2xl font-bold ${s.color}`}>{s.val}</div>
-            <div className="text-gray-400 text-xs mt-0.5">{s.label}</div>
+          <div key={i} className={`bg-gradient-to-br ${s.bg} stat-glass-card border ${s.border}`}>
+            <div className="text-xl sm:text-2xl shrink-0">{s.icon}</div>
+            <div className="min-w-0">
+              <div className={`text-lg sm:text-2xl font-bold leading-tight ${s.color}`}>{s.val}</div>
+              <div className="text-xs mt-0.5 truncate" style={{color:'var(--text-secondary)'}}>{s.label}</div>
+            </div>
           </div>
         ))}
       </div>
 
-      {/* Quick Actions — 1 col on mobile, 3 cols on desktop */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+      {/* Quick Actions — 3-col always, fluid padding */}
+      <div className="grid grid-cols-3 gap-2 sm:gap-3">
         {quickActions.map(({ to, icon, label, desc }) => (
           <Link key={to} to={to}
-            className="bg-gray-800/50 hover:bg-gray-800 border border-slate-700/20 hover:border-slate-600/40 rounded-xl p-4 flex sm:flex-col items-center sm:text-center gap-3 transition-all group hover:-translate-y-0.5">
-            <div className="text-2xl group-hover:scale-110 transition-transform shrink-0">{icon}</div>
-            <div className="sm:text-center text-left">
-              <p className="font-semibold text-white text-sm">{label}</p>
-              <p className="text-gray-500 text-xs mt-0.5">{desc}</p>
+            className="p-3 sm:p-4 flex items-center gap-2 sm:gap-3 border transition-all"
+            style={{borderRadius:'4px',background:'var(--bg-card)',borderColor:'var(--border)'}}>
+            <div className="text-lg sm:text-xl shrink-0">{icon}</div>
+            <div className="min-w-0">
+              <p className="font-semibold text-xs sm:text-sm leading-tight truncate" style={{color:'var(--text-primary)'}}>{label}</p>
+              <p className="text-xs mt-0.5 truncate hidden sm:block" style={{color:'var(--text-muted)'}}>{desc}</p>
             </div>
           </Link>
         ))}
       </div>
 
-      {/* My Exams — Recent 5 + search + filter tabs */}
-      <div className="bg-gray-800/50 border border-slate-700/20 rounded-2xl p-5">
+      {/* My Exams — fills remaining height */}
+      <div className="flex flex-col flex-1 border p-3 sm:p-4 lg:p-5"
+        style={{borderRadius:'4px',background:'var(--bg-card)',borderColor:'var(--border)'}}>
 
         {/* Header row */}
         <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
@@ -290,6 +298,7 @@ const FacultyDashboard = () => {
             </Link>
           </div>
         )}
+      </div>
       </div>
     </DashboardLayout>
   );

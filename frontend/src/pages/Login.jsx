@@ -122,7 +122,7 @@ const Login = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-900 flex">
+    <div className="login-page min-h-screen flex">
 
       {/* ── Left Panel (branding) — hidden on small screens ── */}
       <div className="hidden lg:flex flex-col justify-between w-2/5 bg-gradient-to-br from-blue-950 via-gray-900 to-purple-950 p-12 border-r border-white/5">

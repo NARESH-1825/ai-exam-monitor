@@ -28,4 +28,8 @@ router.post('/papers', createPaper);
 router.put('/papers/:id', updatePaper);
 router.delete('/papers/:id', deletePaper);
 
+// Import questions from PDF / Image via Claude API (backend-proxied)
+const { importQuestionsFromFile } = require('../controllers/facultyController');
+router.post('/import-questions', importQuestionsFromFile);
+
 module.exports = router;

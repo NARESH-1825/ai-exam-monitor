@@ -20,6 +20,7 @@ import ExamConfig from "./pages/faculty/ExamConfig";
 import LiveMonitor from "./pages/faculty/LiveMonitor";
 import Students from "./pages/faculty/Students";
 import AllExams from "./pages/faculty/AllExams";
+import ImportPage from "./pages/faculty/ImportQuestionPaper/ImportPage";
 import ProtectedRoute from "./components/ProtectedRoute";
 
 function AppRoutes() {
@@ -75,6 +76,7 @@ function AppRoutes() {
       <Route path="/faculty/students" element={<ProtectedRoute role="faculty"><Students /></ProtectedRoute>} />
       <Route path="/faculty/monitor/:examId" element={<ProtectedRoute role="faculty"><LiveMonitor /></ProtectedRoute>} />
       <Route path="/faculty/all-exams" element={<ProtectedRoute role="faculty"><AllExams /></ProtectedRoute>} />
+      <Route path="/faculty/import-questions" element={<ProtectedRoute role="faculty"><ImportPage /></ProtectedRoute>} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
