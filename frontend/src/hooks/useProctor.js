@@ -911,5 +911,9 @@ export const useProctor = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled]);
 
-  return { videoRef, audioOnlyModeRef };
+  const stopProctoring = useCallback(() => {
+    stopped.current = true;
+  }, []);
+
+  return { videoRef, audioOnlyModeRef, stopProctoring };
 };

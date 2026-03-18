@@ -178,6 +178,7 @@ const ExamRoom = () => {
     clearInterval(timerRef.current);
     
     // Disable proctoring immediately to prevent fullscreen exit violations
+    stopProctoring(); 
     setProctorReady(false);
     exitFS();
 
@@ -268,7 +269,7 @@ const ExamRoom = () => {
     return () => { delete window.__proctorToast__; };
   }, []);
 
-  const { videoRef, audioOnlyModeRef } = useProctor({
+  const { videoRef, audioOnlyModeRef, stopProctoring } = useProctor({
     socket,
     submissionId: proctorReady ? subIdRef.current : null,
     logId:        proctorReady ? logIdRef.current  : null,
@@ -336,6 +337,8 @@ const ExamRoom = () => {
             mirrored={false}
             videoConstraints={{ width: 640, height: 480, facingMode: 'user' }}
             screenshotFormat="image/jpeg"
+            playsInline
+            muted
           />
         </div>
       )}
