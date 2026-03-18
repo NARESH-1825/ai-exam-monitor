@@ -77,7 +77,7 @@ const Landing = () => {
           </Link>
           <a
             href="#features"
-            className="px-8 py-3.5 bg-white/8 hover:bg-white/14 border border-white/10 rounded-xl font-semibold text-base transition-all hover:-translate-y-0.5"
+            className="px-8 py-3.5 bg-white/8 hover:bg-white/14 border border-white rounded-xl font-semibold text-white text-base transition-all hover:-translate-y-0.5"
           >
             Explore Features
           </a>

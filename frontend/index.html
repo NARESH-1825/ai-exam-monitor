@@ -5,6 +5,14 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AI Exam Monitor</title>
+  <!-- No-flash theme script: runs synchronously before paint -->
+  <script>
+    (function(){
+      var t = localStorage.getItem('ai-exam-theme');
+      if(['dark','colored','light'].indexOf(t) === -1) t = 'dark';
+      document.documentElement.setAttribute('data-theme', t);
+    })();
+  </script>
   </head>
   <body>
     <div id="root"></div>

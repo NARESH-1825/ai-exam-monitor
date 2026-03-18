@@ -256,7 +256,13 @@ const ExamRoom = () => {
   // ── Proctor hook ──────────────────────────────────────────────────────────
   // Pass submissionId and logId directly from refs so the hook's internal
   // useEffect syncs them whenever they change.
-  const { videoRef } = useProctor({
+  // Expose toast to useProctor for audio-only fallback notification
+  useEffect(() => {
+    window.__proctorToast__ = (msg, opts) => toast.warn(msg, opts);
+    return () => { delete window.__proctorToast__; };
+  }, []);
+
+  const { videoRef, audioOnlyModeRef } = useProctor({
     socket,
     submissionId: proctorReady ? subIdRef.current : null,
     logId:        proctorReady ? logIdRef.current  : null,
@@ -322,7 +328,7 @@ const ExamRoom = () => {
           <Webcam
             ref={videoRef}
             mirrored={false}
-            videoConstraints={{ width: 160, height: 120, facingMode: 'user' }}
+            videoConstraints={{ width: 640, height: 480, facingMode: 'user' }}
             screenshotFormat="image/jpeg"
           />
         </div>

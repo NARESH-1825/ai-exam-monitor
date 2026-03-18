@@ -7,6 +7,7 @@ import "react-toastify/dist/ReactToastify.css";
 
 import { fetchMe } from "./features/auth/authSlice";
 import useAuthSync from "./hooks/useAuthSync";
+import { ThemeProvider } from "./context/ThemeContext";
 
 import Landing from "./pages/Landing";
 import Login from "./pages/Login";
@@ -18,28 +19,23 @@ import QuestionBank from "./pages/faculty/QuestionBank";
 import ExamConfig from "./pages/faculty/ExamConfig";
 import LiveMonitor from "./pages/faculty/LiveMonitor";
 import Students from "./pages/faculty/Students";
+import AllExams from "./pages/faculty/AllExams";
 import ProtectedRoute from "./components/ProtectedRoute";
 
-// Inner component so useAuthSync can use hooks inside Router
 function AppRoutes() {
   const dispatch = useDispatch();
   const { isAuthenticated, user, token } = useSelector((state) => state.auth);
   const [initializing, setInitializing] = useState(true);
 
-  // Feature 2: On any new tab, if token exists in storage, verify it with server
   useEffect(() => {
     const init = async () => {
       const storedToken = localStorage.getItem("token");
-      if (storedToken) {
-        // Token exists — verify with server (auto-login)
-        await dispatch(fetchMe());
-      }
+      if (storedToken) await dispatch(fetchMe());
       setInitializing(false);
     };
     init();
   }, []);
 
-  // Feature 3: Cross-tab logout + session invalidation listener
   useAuthSync();
 
   if (initializing) {
@@ -60,10 +56,7 @@ function AppRoutes() {
         path="/login"
         element={
           isAuthenticated ? (
-            <Navigate
-              to={user?.role === "student" ? "/student" : "/faculty"}
-              replace
-            />
+            <Navigate to={user?.role === "student" ? "/student" : "/faculty"} replace />
           ) : (
             <Login />
           )
@@ -71,72 +64,17 @@ function AppRoutes() {
       />
 
       {/* Student Routes */}
-      <Route
-        path="/student"
-        element={
-          <ProtectedRoute role="student">
-            <StudentDashboard />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/student/assessments"
-        element={
-          <ProtectedRoute role="student">
-            <Assessments />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/student/exam/:examId"
-        element={
-          <ProtectedRoute role="student">
-            <ExamRoom />
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/student" element={<ProtectedRoute role="student"><StudentDashboard /></ProtectedRoute>} />
+      <Route path="/student/assessments" element={<ProtectedRoute role="student"><Assessments /></ProtectedRoute>} />
+      <Route path="/student/exam/:examId" element={<ProtectedRoute role="student"><ExamRoom /></ProtectedRoute>} />
 
       {/* Faculty Routes */}
-      <Route
-        path="/faculty"
-        element={
-          <ProtectedRoute role="faculty">
-            <FacultyDashboard />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/faculty/questions"
-        element={
-          <ProtectedRoute role="faculty">
-            <QuestionBank />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/faculty/exam-config"
-        element={
-          <ProtectedRoute role="faculty">
-            <ExamConfig />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/faculty/students"
-        element={
-          <ProtectedRoute role="faculty">
-            <Students />
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/faculty/monitor/:examId"
-        element={
-          <ProtectedRoute role="faculty">
-            <LiveMonitor />
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/faculty" element={<ProtectedRoute role="faculty"><FacultyDashboard /></ProtectedRoute>} />
+      <Route path="/faculty/questions" element={<ProtectedRoute role="faculty"><QuestionBank /></ProtectedRoute>} />
+      <Route path="/faculty/exam-config" element={<ProtectedRoute role="faculty"><ExamConfig /></ProtectedRoute>} />
+      <Route path="/faculty/students" element={<ProtectedRoute role="faculty"><Students /></ProtectedRoute>} />
+      <Route path="/faculty/monitor/:examId" element={<ProtectedRoute role="faculty"><LiveMonitor /></ProtectedRoute>} />
+      <Route path="/faculty/all-exams" element={<ProtectedRoute role="faculty"><AllExams /></ProtectedRoute>} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
@@ -145,18 +83,20 @@ function AppRoutes() {
 
 function App() {
   return (
-    <BrowserRouter>
-      <AppRoutes />
-      <ToastContainer
-        position="top-right"
-        theme="dark"
-        autoClose={1000}
-        hideProgressBar={false}
-        newestOnTop
-        closeOnClick
-        pauseOnHover
-      />
-    </BrowserRouter>
+    <ThemeProvider>
+      <BrowserRouter>
+        <AppRoutes />
+        <ToastContainer
+          position="top-right"
+          theme="dark"
+          autoClose={1000}
+          hideProgressBar={false}
+          newestOnTop
+          closeOnClick
+          pauseOnHover
+        />
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }
 
