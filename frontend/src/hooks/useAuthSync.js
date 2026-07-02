@@ -39,9 +39,10 @@ const useAuthSync = () => {
     return () => window.removeEventListener('storage', handleStorage);
   }, [dispatch, navigate]);
 
-  // ── 2. Socket: user:blocked — immediate account block by faculty ─────────
+  // ── 2. Socket: user:blocked & session:terminated ─────────────────────────
   useEffect(() => {
     if (!socket) return;
+
     socket.on('user:blocked', ({ studentId, message }) => {
       if (user?.id === studentId || user?.userId === studentId) {
         toast.error(message || 'Your account has been blocked by faculty.', {
@@ -51,10 +52,25 @@ const useAuthSync = () => {
         dispatch(clearAuth());
         localStorage.removeItem('token');
         localStorage.removeItem('authUser');
-        navigate('/login', { replace: true });
+        navigate('/', { replace: true });
       }
     });
-    return () => socket.off('user:blocked');
+
+    socket.on('session:terminated', () => {
+      dispatch(clearAuth());
+      localStorage.removeItem('token');
+      localStorage.removeItem('authUser');
+      toast.warning('⚠️ Your account was accessed from a new device. This session has been terminated.', {
+        toastId: 'session-kicked',
+        autoClose: 8000,
+      });
+      navigate('/', { replace: true });
+    });
+
+    return () => {
+      socket.off('user:blocked');
+      socket.off('session:terminated');
+    };
   }, [socket, user?.id, dispatch, navigate]);
 
   // ── 3. Firestore real-time session watcher ─────────────────────────────────
@@ -96,7 +112,7 @@ const useAuthSync = () => {
         localStorage.removeItem('token');
         localStorage.removeItem('authUser');
         toast.info('You have been logged out.', { toastId: 'session-out' });
-        navigate('/login', { replace: true });
+        navigate('/', { replace: true });
         return;
       }
 
@@ -104,11 +120,11 @@ const useAuthSync = () => {
         dispatch(clearAuth());
         localStorage.removeItem('token');
         localStorage.removeItem('authUser');
-        toast.warning('You were logged in from another device. This session has ended.', {
+        toast.warning('⚠️ Your account was accessed from a new device. This session has been terminated.', {
           toastId: 'session-kicked',
           autoClose: 6000,
         });
-        navigate('/login', { replace: true });
+        navigate('/', { replace: true });
       }
     }, (err) => {
       console.warn('Firestore session watch error (non-critical):', err.code);

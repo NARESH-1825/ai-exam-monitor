@@ -68,6 +68,12 @@ app.use(express.json({ limit: "10mb" }));
 app.use(cookieParser());
 app.use(morgan("dev"));
 
+// Attach Socket.io to request
+app.use((req, res, next) => {
+  req.io = io;
+  next();
+});
+
 // Routes
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/student", require("./routes/student"));

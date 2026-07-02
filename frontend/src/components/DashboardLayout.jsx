@@ -5,6 +5,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { logoutUser } from "../features/auth/authSlice";
 import { toast } from "react-toastify";
 import { useTheme } from "../context/ThemeContext";
+import LogoutConfirmModal from "./LogoutConfirmModal";
 
 /* ── Nav config ────────────────────────────────────────────────── */
 const STUDENT_NAV = [
@@ -149,10 +150,12 @@ const DashboardLayout = ({ children, title, actions }) => {
   const [collapsed,   setCollapsed]   = useState(false);
   const [mobileOpen,  setMobileOpen]  = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const navLinks = user?.role === "faculty" ? FACULTY_NAV : STUDENT_NAV;
 
   const handleLogout = async () => {
+    setShowLogoutModal(false);
     await dispatch(logoutUser());
     toast.info("Logged out successfully", { className: "custom-toast", bodyClassName: "custom-toast-body" });
     navigate("/login", { replace: true });
@@ -251,7 +254,7 @@ const DashboardLayout = ({ children, title, actions }) => {
         )}
 
         <button
-          onClick={handleLogout}
+          onClick={() => setShowLogoutModal(true)}
           title="Logout"
           className={`flex items-center gap-2 text-xs font-medium rounded-xl px-3 py-2 transition-all w-full border border-transparent ${collapsed && !forMobile ? "justify-center px-0" : ""}`}
           style={{ color: '#f87171' }}
@@ -369,7 +372,7 @@ const DashboardLayout = ({ children, title, actions }) => {
 
           {/* Logout */}
           <button
-            onClick={handleLogout}
+            onClick={() => setShowLogoutModal(true)}
             title="Logout"
             className="nav-bottom-item nav-bottom-logout flex-1 flex flex-col items-center justify-center py-3 relative overflow-hidden"
           >
@@ -381,6 +384,7 @@ const DashboardLayout = ({ children, title, actions }) => {
       </div>
 
       {profileOpen && <ProfileModal user={user} onClose={() => setProfileOpen(false)} />}
+      <LogoutConfirmModal isOpen={showLogoutModal} onClose={() => setShowLogoutModal(false)} onConfirm={handleLogout} />
     </div>
   );
 };

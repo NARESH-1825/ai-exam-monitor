@@ -1,15 +1,19 @@
 // frontend/src/components/Navbar.jsx
+import { useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate, Link } from 'react-router-dom';
 import { logoutUser } from '../features/auth/authSlice';
 import { toast } from 'react-toastify';
+import LogoutConfirmModal from './LogoutConfirmModal';
 
 const Navbar = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { user } = useSelector(state => state.auth);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const handleLogout = async () => {
+    setShowLogoutModal(false);
     await dispatch(logoutUser());
     toast.info('Logged out successfully',{ className: 'custom-toast',
     bodyClassName: 'custom-toast-body'});
@@ -28,11 +32,17 @@ const Navbar = () => {
           <p className="text-white text-sm font-semibold">{user?.name}</p>
           <p className="text-gray-500 text-xs capitalize">{user?.role}{user?.rollNumber && ` · ${user.rollNumber}`}</p>
         </div>
-        <button onClick={handleLogout}
+        <button onClick={() => setShowLogoutModal(true)}
           className="text-xs px-3 py-1.5 bg-red-700 hover:bg-red-600 text-white rounded-lg transition-colors font-medium">
           🚪 Logout
         </button>
       </div>
+
+      <LogoutConfirmModal 
+        isOpen={showLogoutModal} 
+        onClose={() => setShowLogoutModal(false)} 
+        onConfirm={handleLogout} 
+      />
     </nav>
   );
 };
